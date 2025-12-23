@@ -89,30 +89,34 @@ public class Main extends Sprite implements ISpecialFile {
     }
 
     internal function runScript(event:Event = null):void {
-        var err:int = 0
-        outbox.text = ""
-        luastate = Lua.luaL_newstate()
+        var err:int = 0;
+        outbox.text = "";
+        luastate = Lua.luaL_newstate();
 
-        Lua.luaL_openlibs(luastate)
-        err = Lua.luaL_loadstring(luastate, inbox.text)
+        Lua.luaL_openlibs(luastate);
+        err = Lua.luaL_loadstring(luastate, inbox.text);
         if (err) {
-            Lua.lua_settop(luastate, -2)
-            Lua.lua_close(luastate)
-            output("Can't parse script: " + err)
-            return
+            Lua.lua_settop(luastate, -2);
+            Lua.lua_close(luastate);
+            output("Can't parse script: " + err);
+            return;
         }
 
-        var runtime:int = getTimer()
-        err = Lua.lua_pcallk(luastate, 0, Lua.LUA_MULTRET, 0, 0, null)
-        runtime = getTimer() - runtime
-        runtimelabel.text = "Script time: " + runtime + "ms"
-        /* + " final stack depth: " + Lua.lua_gettop(luastate) */
-
-        if (err) {
-            output("Failed to run script: " + Lua.lua_tolstring(luastate, -1, 0))
-        } else {
-            var result:Number = Lua.lua_tonumberx(luastate, -1, 0)
-            output("Script returned: " + result)
+        try{
+            var runtime:int = getTimer();
+            err = Lua.lua_pcallk(luastate, 0, Lua.LUA_MULTRET, 0, 0, null);
+            runtime = getTimer() - runtime;
+            runtimelabel.text = "Script time: " + runtime + "ms";
+            /* + " final stack depth: " + Lua.lua_gettop(luastate) */
+  
+            if (err) {
+                output("Failed to run script: " + Lua.lua_tolstring(luastate, -1, 0));
+            } else {
+                var result:Number = Lua.lua_tonumberx(luastate, -1, 0);
+                output("Script returned: " + result);
+            }
+        } catch(e:Error) {
+            output("Failed to run script: " + e.toString());
         }
 
         Lua.lua_settop(luastate, -2)
@@ -120,8 +124,8 @@ public class Main extends Sprite implements ISpecialFile {
     }
 
     public function output(s:String):void {
-        outbox.text += s
-        trace(s)
+        outbox.text += s;
+        trace(s);
     }
 
     /**

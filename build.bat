@@ -28,6 +28,9 @@
 
 :: Author: Andras Csizmadia
 
+set AIR_HOME=G:/air_sdk
+set FLASCC_ROOT=G:/crossbridgeold
+
 :: Echo off and begin localisation of Environment Variables
 @ECHO OFF & SETLOCAL
 
