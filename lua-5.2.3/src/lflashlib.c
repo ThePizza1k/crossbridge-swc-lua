@@ -34,15 +34,8 @@ package_as3(
   "#package public\n"
   "import flash.utils.Dictionary;\n"
   "public var __lua_objrefs:Dictionary = new Dictionary();\n" // Keep track of object references from lua
-  "public var __lua_typerefs:Dictionary = new Dictionary();\n" // Keep track of types we may want to convert
-  "public var __lua_isDynamic:Dictionary = new Dictionary();\n" // Cache of whether classes are dynamic or not.
+  "public var __lua_typerefs:Dictionary = new Dictionary();\n" // Keep track of types we may want to convert, via their constructors.
 
-  "__lua_typerefs[int(0).constructor] = 1;\n" // Number
-  "__lua_typerefs[uint(0).constructor] = 1;\n" // Number
-  "__lua_typerefs[Number(0).constructor] = 1;\n" // Number
-  "__lua_typerefs[Boolean(false).constructor] = 2;\n" // Boolean
-  "__lua_typerefs[String("").constructor] = 3;\n" // String
-  "__lua_typerefs[int(0).toString.constructor] = 4;\n" // Function
 );
 
 #define FlashObjectType "flash"
@@ -949,7 +942,7 @@ static int flash_hasprop(lua_State *L) {
 }
 
 static int flash_tolua(lua_State *L) {
-  FlashObj *obj = (FlashObj*) lua_touserdata(L, 1);
+  FlashObj *obj = getObjRef(L, 1);
   AS3_DeclareVar(o, Object);
   int type = 0;
   inline_as3(
@@ -1174,20 +1167,88 @@ static int flash_toarray (lua_State *L) {
   return 1;
 }
 
-static int depth = 0;
-static const int MAX_DEPTH = 16;
+static int toobject_depth = 0;
+static const int TOOBJECT_MAX_DEPTH = 32; // Arbitrary, but prevents infinite loops in recursion without having to properly check recursion. Nobody needs objects nested this deep anyways.
 
 static int flash_toobject (lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   /* table is in the stack at index 't' */
-  lua_pushnil(L);  /* first key */
+  size_t lKey = 0; // key length
+  size_t lVal = 0; // value length, if string.
   inline_as3("var object:Object = new Object();\n" : : );
+  AS3_DeclareVar(keyVal, String);
+  lua_pushnil(L);  /* first key */
   while (lua_next(L, 1) != 0) {
     /* uses 'key' (at index -2) and 'value' (at index -1) */
-    
+    if (lua_type(L, -2) == LUA_TSTRING){
+      const char *sKey = lua_tolstring(L, -2, &lKey); // This'll fuck up the stack if we dont check for string first
+      AS3_CopyCStringToVar(keyVal, sKey, lKey);
+      switch(lua_type(L, -1)) {
+        case LUA_TBOOLEAN: inline_as3("object[keyVal] = %0;\n" : : "r"(lua_toboolean(L, -1))); break;
+        case LUA_TNUMBER: inline_as3("object[keyVal] = %0;\n" : : "r"(luaL_checknumber(L, -1))); break;
+        case LUA_TFUNCTION:
+        {
+          int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+          AS3_DeclareVar(luastate, int);
+          AS3_CopyScalarToVar(luastate, L);
+          inline_as3(
+          "object[keyVal] = function(...vaargs):void"
+          "{"
+          "  Lua.lua_rawgeti(luastate, %1, %0);"
+          "  for(var i:int = 0; i<vaargs.length;i++) {"
+          "    var udptr:int = Lua.push_flashref(luastate);"
+          "    __lua_objrefs[udptr] = vaargs[i];"
+          "  };"
+          "  Lua.lua_callk(luastate, vaargs.length, 0, 0, null);"
+          "};\n" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
+          break;
+        }
+        case LUA_TUSERDATA: inline_as3("object[keyVal] = __lua_objrefs[%0];\n" : : "r"(getObjRef(L, -1))); break;
+        case LUA_TTABLE:
+        {
+          toobject_depth++;
+          if (toobject_depth > TOOBJECT_MAX_DEPTH) {
+            toobject_depth = 0;
+            luaL_error(L,"toobject: Reached maximum recursion depth.");
+          }
+          lua_pushcfunction(L, flash_toobject);
+          lua_pushvalue(L,-2); // value is -2 now, because we pushed function
+          lua_call(L, 1, 1);
+          inline_as3("object[keyVal] = __lua_objrefs[%0];\n" : : "r"((FlashObj*) lua_touserdata(L, -1)));
+          toobject_depth--;
+          lua_pop(L,1); // Remove userdata off stack
+          break;
+        }
+        case LUA_TSTRING:
+        {
+          const char *s = luaL_checklstring(L, 2, &lVal);
+          AS3_DeclareVar(strvar, String);
+          AS3_CopyCStringToVar(strvar, s, lVal);
+          inline_as3("object[keyVal] = strvar;\n");
+          break;
+        }
+        default:
+          inline_as3("trace(\"unknown: \" + %0);\n" :  : "r"(lua_type(L, -1)));
+          return 0;
+      }
+    }
     /* removes 'value'; keeps 'key' for next iteration */
     lua_pop(L, 1);
   }
+  // Push object reference
+  FlashObj *result = push_newflashref(L);
+
+  // Get the prop, and store it with the new key
+  inline_as3("__lua_objrefs[%0] = object;\n" : : "r"(result) );
+  return 1;
+}
+
+static int flash_type (lua_State *L) {
+  FlashObj obj = getObjRef(L, 1);
+  char *str = NULL;
+  inline_as3("import flash.utils.getQualifiedClassName;\n");
+  inline_as3("%0 = CModule.mallocString(getQualifiedClassName(__lua_objrefs[%1]));\n" : "=r"(str) : "r"(obj));
+  lua_pushfstring(L,str);
   return 1;
 }
 
@@ -1244,6 +1305,8 @@ static const luaL_Reg flashlib[] = {
   //{"safesetprop", flash_safesetprop},
   {"tolua", flash_tolua},
   {"toarray", flash_toarray},
+  {"toobject", flash_toobject},
+  {"type", flash_type},
 
   {NULL, NULL}
 };
