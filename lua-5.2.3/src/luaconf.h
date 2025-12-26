@@ -308,7 +308,6 @@
 /* }================================================================== */
 
 
-
 /*
 @@ LUAI_BITSINT defines the number of bits in an int.
 ** CHANGE here if Lua cannot automatically detect the number of bits of
@@ -545,7 +544,7 @@
 ** without modifying the main part of the file.
 */
 
-
+//#define LUA_USE_APICHECK
 
 #endif
 

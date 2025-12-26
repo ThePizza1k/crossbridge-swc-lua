@@ -26,7 +26,7 @@
 static int flash_getprop (lua_State *L);
 static int flash_safegetprop (lua_State *L);
 static int flash_safesetprop (lua_State *L);
-static int flash_call (lua_State *L);
+static int flash_metacall (lua_State *L);
 static int flash_apply (lua_State *L);
 
 
@@ -105,7 +105,7 @@ static const luaL_Reg FlashObj_meta[] = {
   {"__tostring",  FlashObj_tostring},
   {"__index",     flash_safegetprop},
   {"__newindex",  flash_safesetprop},
-  //{"__call",      flash_apply}, (I don't think we need this, since we're converting AS3 functions to closures anyways...)
+  {"__call",    flash_metacall}, // Limited to 9 args, but acceptable for directly provided functions.
   {0, 0}
 };
 
@@ -735,7 +735,7 @@ static int flash_closure_apply (lua_State *L) {
   while(i <= top) {
     switch(lua_type(L, i)) {
       case LUA_TNIL: inline_as3("args.push(null);\n" : : ); break;
-      case LUA_TBOOLEAN: inline_as3("args.push(%0);\n" : : "r"(lua_toboolean(L, i))); break;
+      case LUA_TBOOLEAN: inline_as3("args.push(Boolean(%0));\n" : : "r"(lua_toboolean(L, i))); break;
       case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
       case LUA_TFUNCTION:
       {
@@ -744,16 +744,21 @@ static int flash_closure_apply (lua_State *L) {
         int ref = luaL_ref(L, LUA_REGISTRYINDEX);
         AS3_DeclareVar(luastate, int);
         AS3_CopyScalarToVar(luastate, L);
+        AS3_DeclareVar(lfRef, int);
+        AS3_CopyScalarToVar(lfRef, ref);
         inline_as3(
         "args.push(function(...vaargs):void"
         "{"
-        "  Lua.lua_rawgeti(luastate, %1, %0);"
+        "  Lua.lua_rawgeti(luastate, %0, lfRef);"
         "  for(var i:int = 0; i<vaargs.length;i++) {"
         "    var udptr:int = Lua.push_flashref(luastate);"
         "    __lua_objrefs[udptr] = vaargs[i];"
         "  };"
-        "  Lua.lua_callk(luastate, vaargs.length, 0, 0, null);"
-        "});" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
+        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
+        "  if (errNum != 0) {"
+        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
+        "  }"
+        "});" : : "r"(LUA_REGISTRYINDEX));
         break;
       }
       case LUA_TTABLE:
@@ -831,7 +836,164 @@ static int flash_closure_apply (lua_State *L) {
     case 2: // Is bool
       ;
       int bool_ = 0;
-      inline_as3("%0 = result as int;\n" : "=r"(bool_) : );
+      inline_as3("%0 = int(result);\n" : "=r"(bool_) : );
+      lua_pushboolean(L, bool_);
+      break;
+    case 3: // Is string
+      ;
+      char *str = NULL;
+      inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(str) : );
+      lua_pushfstring(L, str);
+      free(str);
+      break;
+    case 4: // Wtf?
+      lua_pushvalue(L,lua_upvalueindex(1));
+      FlashObj *resFun = push_newflashref(L);
+      inline_as3("__lua_objrefs[%0] = result;\n" : : "r"(resFun) );
+      lua_pushcclosure(L,flash_closure_apply,2);
+      break;
+    case 5: // it's null.
+      lua_pushnil(L);
+      break;
+    case 0: // Ok we'll push your god damn flash reference fine
+      ;
+      // Push the new userdata onto the stack
+      FlashObj *resRef = push_newflashref(L);
+      // Get the prop, and store it with the new key
+      inline_as3("__lua_objrefs[%0] = result;\n" : : "r"(resRef) );
+      break;
+  }
+
+  return 1;
+}
+
+static int flash_metacall (lua_State *L) {
+  int top = lua_gettop(L);
+
+  FlashObj *funcobj = (FlashObj*) lua_touserdata(L, 1); // yes this order is weird its whatever.
+
+  int isFunction = 0;
+
+  inline_as3("%0 = int(__lua_objrefs[%1] is Function);\n" : "=r"(isFunction) : "r"(funcobj));
+
+  if (isFunction == 0) {lua_pop(L, top); return 0;} // Do nothing if not a function.
+
+  inline_as3("var args:Array = [];\n");
+
+  int i = 2;
+  while(i <= top) {
+    switch(lua_type(L, i)) {
+      case LUA_TNIL: inline_as3("args.push(null);\n" : : ); break;
+      case LUA_TBOOLEAN: inline_as3("args.push(%0);\n" : : "r"(lua_toboolean(L, i))); break;
+      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
+      case LUA_TFUNCTION:
+      {
+        lua_settop(L, top+1);
+        lua_copy(L, i, top+1);
+        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        AS3_DeclareVar(luastate, int);
+        AS3_CopyScalarToVar(luastate, L);
+        inline_as3(
+        "args.push(function(...vaargs):void"
+        "{"
+        "  Lua.lua_rawgeti(luastate, %1, %0);"
+        "  for(var i:int = 0; i<vaargs.length;i++) {"
+        "    var udptr:int = Lua.push_flashref(luastate);"
+        "    __lua_objrefs[udptr] = vaargs[i];"
+        "  };"
+        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
+        "  if (errNum != 0) {"
+        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
+        "  }"
+        "});" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
+        break;
+      }
+      case LUA_TTABLE:
+      {
+        inline_as3("args.push(null);\n" : : ); // Temporary
+        break;
+      }
+      case LUA_TUSERDATA: 
+      {
+        inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(getObjRef(L, i)));
+        break;
+      }
+      case LUA_TSTRING:
+      {
+        size_t l=0;
+        const char *s = luaL_checklstring(L, i, &l);
+        AS3_DeclareVar(strvar, String);
+        AS3_CopyCStringToVar(strvar, s, l);
+        inline_as3("args.push(strvar);\n");
+        break;
+      }
+      case LUA_TTHREAD:
+      {
+        inline_as3("args.push(null);\n" : : ); // Should push some sort of object for this indicating "unconvertible".
+        break;
+      }
+      default:
+        inline_as3("trace(\"unknown: \" + %0 + \",\" + %1+ \",\" + %2);\n" :  : "r"(i), "r"(top), "r"(lua_type(L, i)));
+        return 0;
+    }
+    i++;
+  }
+  // Flush all args off the stack
+  lua_pop(L, top);
+
+
+  AS3_DeclareVar(result, Object);
+  int err = 0; // set to 1 if error.
+
+  inline_as3(
+    "try{\n"
+    "  switch(args.length) { \n"
+    "    case 0: result = __lua_objrefs[%1](); break;\n"
+    "    case 1: result = __lua_objrefs[%1](args[0]); break;\n"
+    "    case 2: result = __lua_objrefs[%1](args[0], args[1]); break;\n"
+    "    case 3: result = __lua_objrefs[%1](args[0], args[1], args[2]); break;\n"
+    "    case 4: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3]); break;\n"
+    "    case 5: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4]); break;\n" 
+    "    case 6: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5]); break;\n"
+    "    case 7: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6]); break;\n"
+    "    case 8: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]); break;\n"
+    "    case 9: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]); break;\n"
+    "  };\n"
+    "} catch(e : Error) {\n"
+    "  %0 = 1;\n"
+    "  result = \"AS3 Error: \" + e.message;\n"
+    "}"
+    : "=r"(err) : "r"(funcobj)
+  );
+
+  if (err == 1){ // There was an error!
+    char *errmsg = NULL;
+    inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(errmsg) : );
+    lua_pushfstring(L, errmsg);
+    free(errmsg);
+    lua_error(L); // long jump, never returns.
+  }
+
+  int type = 0;
+  inline_as3(
+    "if (result is Number) {%0 = 1;}"
+    "else if (result is Boolean) {%0 = 2;}"
+    "else if (result is String) {%0 = 3;}"
+    "else if (result is Function) {%0 = 4;}"
+    "else if (result == null || result == undefined) {%0 = 5;}"
+    "else {%0 = 0;}" : "=r"(type) : );
+
+  switch (type) {
+    case 1: // Is number
+      ;
+      lua_Number num = 0.0;
+      inline_as3("%0 = result;\n" : "=r"(num) : );
+      lua_pushnumber(L, num);
+      break;
+    case 2: // Is bool
+      ;
+      int bool_ = 0;
+      inline_as3("%0 = int(result);\n" : "=r"(bool_) : );
       lua_pushboolean(L, bool_);
       break;
     case 3: // Is string
@@ -963,7 +1125,7 @@ static int flash_tolua(lua_State *L) {
     case 2: // Is bool
       ;
       int bool_ = 0;
-      inline_as3("%0 = o as int;\n" : "=r"(bool_) : );
+      inline_as3("%0 = int(o);\n" : "=r"(bool_) : );
       lua_pushboolean(L, bool_);
       break;
     case 3: // Is string
@@ -1024,7 +1186,7 @@ static int flash_safegetprop(lua_State *L) {
       case 2: // Is bool
         lua_pop(L,1);
         int bool_;
-        inline_as3("%0 = o2 as int;\n" : "=r"(bool_) : );
+        inline_as3("%0 = int(o2);\n" : "=r"(bool_) : );
         lua_pushboolean(L, bool_);
         break;
       case 3: // Is string
@@ -1070,7 +1232,7 @@ static int flash_safesetprop (lua_State *L) {
   AS3_CopyCStringToVar(propname, s, l);
   AS3_DeclareVar(propVal, Object);
   switch(lua_type(L, 3)) {
-      case LUA_TBOOLEAN: inline_as3("propVal = %0;\n" : : "r"(lua_toboolean(L, 3))); break;
+      case LUA_TBOOLEAN: inline_as3("propVal = Boolean(%0);\n" : : "r"(lua_toboolean(L, 3))); break;
       case LUA_TNUMBER: inline_as3("propVal = %0;\n" : : "r"(luaL_checknumber(L, 3))); break;
       case LUA_TFUNCTION:
       {
@@ -1085,7 +1247,10 @@ static int flash_safesetprop (lua_State *L) {
         "    var udptr:int = Lua.push_flashref(luastate);"
         "    __lua_objrefs[udptr] = vaargs[i];"
         "  };"
-        "  Lua.lua_callk(luastate, vaargs.length, 0, 0, null);"
+        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
+        "  if (errNum != 0) {"
+        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
+        "  }"
         "};\n" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
         break;
       }
@@ -1123,7 +1288,7 @@ static int flash_toarray (lua_State *L) {
   for (i = 0; i < len; i++){
     lua_rawgeti(L,1,i+1);
     switch(lua_type(L, 2)) {
-      case LUA_TBOOLEAN: inline_as3("arr[%1] = %0;\n" : : "r"(lua_toboolean(L, 2)), "r"(i)); break;
+      case LUA_TBOOLEAN: inline_as3("arr[%1] = Boolean(%0);\n" : : "r"(lua_toboolean(L, 2)), "r"(i)); break;
       case LUA_TNUMBER: inline_as3("arr[%1] = %0;\n" : : "r"(luaL_checknumber(L, 2)), "r"(i)); break;
       case LUA_TFUNCTION:
       {
@@ -1138,7 +1303,10 @@ static int flash_toarray (lua_State *L) {
         "    var udptr:int = Lua.push_flashref(luastate);"
         "    __lua_objrefs[udptr] = vaargs[i];"
         "  };"
-        "  Lua.lua_callk(luastate, vaargs.length, 0, 0, null);"
+        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
+        "  if (errNum != 0) {"
+        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
+        "  }"
         "};\n" : : "r"(ref), "r"(LUA_REGISTRYINDEX), "r"(i));
         break;
       }
@@ -1184,7 +1352,7 @@ static int flash_toobject (lua_State *L) {
       const char *sKey = lua_tolstring(L, -2, &lKey); // This'll fuck up the stack if we dont check for string first
       AS3_CopyCStringToVar(keyVal, sKey, lKey);
       switch(lua_type(L, -1)) {
-        case LUA_TBOOLEAN: inline_as3("object[keyVal] = %0;\n" : : "r"(lua_toboolean(L, -1))); break;
+        case LUA_TBOOLEAN: inline_as3("object[keyVal] = Boolean(%0);\n" : : "r"(lua_toboolean(L, -1))); break;
         case LUA_TNUMBER: inline_as3("object[keyVal] = %0;\n" : : "r"(luaL_checknumber(L, -1))); break;
         case LUA_TFUNCTION:
         {
@@ -1199,7 +1367,10 @@ static int flash_toobject (lua_State *L) {
           "    var udptr:int = Lua.push_flashref(luastate);"
           "    __lua_objrefs[udptr] = vaargs[i];"
           "  };"
-          "  Lua.lua_callk(luastate, vaargs.length, 0, 0, null);"
+        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
+        "  if (errNum != 0) {"
+        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
+        "  }"
           "};\n" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
           break;
         }
@@ -1221,7 +1392,7 @@ static int flash_toobject (lua_State *L) {
         }
         case LUA_TSTRING:
         {
-          const char *s = luaL_checklstring(L, 2, &lVal);
+          const char *s = luaL_checklstring(L, -1, &lVal);
           AS3_DeclareVar(strvar, String);
           AS3_CopyCStringToVar(strvar, s, lVal);
           inline_as3("object[keyVal] = strvar;\n");
@@ -1316,6 +1487,9 @@ LUAMOD_API int luaopen_flash (lua_State *L) {
 
   luaL_newmetatable(L, "flash");
   luaL_setfuncs(L, FlashObj_meta, 0);
+  lua_pushliteral(L, "__type");
+  lua_pushliteral(L, "flash");
+  lua_rawset(L,-3);
   //lua_pushliteral(L, "__index");
   //lua_pushvalue(L, -3);
   //lua_rawset(L, -3);

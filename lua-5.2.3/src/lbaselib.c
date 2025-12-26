@@ -188,7 +188,15 @@ static int luaB_collectgarbage (lua_State *L) {
 
 static int luaB_type (lua_State *L) {
   luaL_checkany(L, 1);
-  lua_pushstring(L, luaL_typename(L, 1));
+  int type = lua_type(L,1);
+  if (type != LUA_TUSERDATA) {
+    lua_pushstring(L, lua_typename(L, type));
+  } else {
+    int hasField = luaL_getmetafield(L, 1, "__type");
+    if (hasField == 0) {
+      lua_pushstring(L, lua_typename(L, type));
+    }
+  }
   return 1;
 }
 
