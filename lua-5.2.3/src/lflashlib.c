@@ -35,7 +35,28 @@ package_as3(
   "import flash.utils.Dictionary;\n"
   "public var __lua_objrefs:Dictionary = new Dictionary();\n" // Keep track of object references from lua
   "public var __lua_typerefs:Dictionary = new Dictionary();\n" // Keep track of types we may want to convert, via their constructors.
+);
 
+package_as3(
+  "#package private\n"
+  "function pushAS3(L:int, obj:Object):void\n"
+  "  {\n"
+  "    if (obj is Number){\n"
+  "      Lua.lua_pushnumber(L, obj as Number);\n"
+  "    } else if (obj is Boolean){\n"
+  "      Lua.lua_pushboolean(L, int(obj));\n"
+  "    } else if (obj is String) {\n"
+  "      Lua.lua_pushstring(L, obj as String);\n"
+  "    } else if (obj is Function) {\n"
+  "      var fnptr:int = Lua.push_flashref(L);\n"
+  "      __lua_objrefs[fnptr] = obj;\n"
+  "    } else if (obj == null) {\n"
+  "      Lua.lua_pushnil(L);\n"
+  "    } else {\n"
+  "      var udptr:int = Lua.push_flashref(L);\n"
+  "      __lua_objrefs[udptr] = obj;\n"
+  "    }\n"
+  "}"
 );
 
 #define FlashObjectType "flash"
@@ -751,8 +772,7 @@ static int flash_closure_apply (lua_State *L) {
         "{"
         "  Lua.lua_rawgeti(luastate, %0, lfRef);"
         "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    var udptr:int = Lua.push_flashref(luastate);"
-        "    __lua_objrefs[udptr] = vaargs[i];"
+        "    pushAS3(luastate,vaargs[i]);"
         "  };"
         "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
         "  if (errNum != 0) {"
@@ -803,7 +823,7 @@ static int flash_closure_apply (lua_State *L) {
     "  result = __lua_objrefs[%1].apply(__lua_objrefs[%2], args);\n"
     "} catch(e : Error) {\n"
     "  %0 = 1;\n"
-    "  result = \"AS3 Error: \" + e.message;\n"
+    "  result = e.message;\n"
     "}"
     : "=r" (err)
     : "r"(funcobj), "r"(thisobj)
@@ -812,9 +832,9 @@ static int flash_closure_apply (lua_State *L) {
   if (err == 1){ // There was an error!
     char *errmsg = NULL;
     inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(errmsg) : );
-    lua_pushfstring(L, errmsg);
+    lua_pushstring(L, errmsg);
     free(errmsg);
-    lua_error(L); // long jump, never returns.
+    return luaL_error(L, "AS3 Error: %s", lua_tostring(L,-1));
   }
 
   int type = 0;
@@ -898,8 +918,7 @@ static int flash_metacall (lua_State *L) {
         "{"
         "  Lua.lua_rawgeti(luastate, %1, %0);"
         "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    var udptr:int = Lua.push_flashref(luastate);"
-        "    __lua_objrefs[udptr] = vaargs[i];"
+        "    pushAS3(luastate,vaargs[i]);"
         "  };"
         "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
         "  if (errNum != 0) {"
@@ -961,7 +980,7 @@ static int flash_metacall (lua_State *L) {
     "  };\n"
     "} catch(e : Error) {\n"
     "  %0 = 1;\n"
-    "  result = \"AS3 Error: \" + e.message;\n"
+    "  result = e.message;\n"
     "}"
     : "=r"(err) : "r"(funcobj)
   );
@@ -969,9 +988,9 @@ static int flash_metacall (lua_State *L) {
   if (err == 1){ // There was an error!
     char *errmsg = NULL;
     inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(errmsg) : );
-    lua_pushfstring(L, errmsg);
+    lua_pushstring(L, errmsg);
     free(errmsg);
-    lua_error(L); // long jump, never returns.
+    return luaL_error(L, "AS3 Error: %s", lua_tostring(L,-1));
   }
 
   int type = 0;
@@ -1244,8 +1263,7 @@ static int flash_safesetprop (lua_State *L) {
         "{"
         "  Lua.lua_rawgeti(luastate, %1, %0);"
         "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    var udptr:int = Lua.push_flashref(luastate);"
-        "    __lua_objrefs[udptr] = vaargs[i];"
+        "    pushAS3(luastate,vaargs[i]);"
         "  };"
         "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
         "  if (errNum != 0) {"
@@ -1267,14 +1285,7 @@ static int flash_safesetprop (lua_State *L) {
         inline_as3("trace(\"unknown: \" + %0);\n" :  : "r"(lua_type(L, 3)));
         return 0;
   }
-  int knownProperty = 0;
-  inline_as3("%0 = int(propname in __lua_objrefs[%1]);\n" : "=r"(knownProperty) : "r"(o1));
-  if (knownProperty == 1) {
-    inline_as3("__lua_objrefs[%0][propname] = propVal;\n" : : "r"(o1));
-  } else { // obviously, you just have to guess if a class is dynamic. apparently.
-    inline_as3("try{__lua_objrefs[%0][propname] = propVal;} catch (e:Error) {}\n" : : "r"(o1));
-  }
-  
+  inline_as3("try{__lua_objrefs[%0][propname] = propVal;} catch (e:Error) {}\n" : : "r"(o1));
   lua_pop(L, 3);
   return 0; // Sorry what the fuck are we returning?
 }
@@ -1300,8 +1311,7 @@ static int flash_toarray (lua_State *L) {
         "{"
         "  Lua.lua_rawgeti(luastate, %1, %0);"
         "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    var udptr:int = Lua.push_flashref(luastate);"
-        "    __lua_objrefs[udptr] = vaargs[i];"
+        "    pushAS3(luastate,vaargs[i]);"
         "  };"
         "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
         "  if (errNum != 0) {"
@@ -1364,13 +1374,12 @@ static int flash_toobject (lua_State *L) {
           "{"
           "  Lua.lua_rawgeti(luastate, %1, %0);"
           "  for(var i:int = 0; i<vaargs.length;i++) {"
-          "    var udptr:int = Lua.push_flashref(luastate);"
-          "    __lua_objrefs[udptr] = vaargs[i];"
+          "    pushAS3(luastate,vaargs[i]);"
           "  };"
-        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
-        "  if (errNum != 0) {"
-        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
-        "  }"
+          "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
+          "  if (errNum != 0) {"
+          "    trace(Lua.lua_tolstring(luastate, -1, 0));"
+          "  }"
           "};\n" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
           break;
         }
