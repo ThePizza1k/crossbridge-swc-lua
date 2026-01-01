@@ -53,8 +53,15 @@ package_as3(
   "    } else if (obj == null) {\n"
   "      Lua.lua_pushnil(L);\n"
   "    } else {\n"
-  "      var udptr:int = Lua.push_flashref(L);\n"
-  "      __lua_objrefs[udptr] = obj;\n"
+	"		   if (__lua_objrefs[obj] == undefined) {\n"
+  "        var udptr:int = Lua.push_flashref(L);\n"
+  "        __lua_objrefs[udptr] = obj;\n"
+  "        __lua_objrefs[obj] = udptr;\n"
+  "      } else {\n"
+	"        Lua.luaL_getsubtable(L, -1001000, \"flash_refs\");\n"
+	"        Lua.lua_rawgeti(L, -1, __lua_objrefs[obj]);\n"
+	"	       Lua.lua_replace(L, -2);\n"
+  "      }\n"
   "    }\n"
   "}"
 );
@@ -105,6 +112,7 @@ static int FlashObj_gc(lua_State *L)
 {
   FlashObj *obj = (FlashObj*) lua_touserdata(L, 1); // in what world is this not a flash userdata?
   //inline_as3("trace(\"gc: \" + %0);\n" :  : "r"(obj));
+  inline_as3("delete __lua_objrefs[__lua_objrefs[%0]];\n" : : "r"(obj));
   inline_as3("delete __lua_objrefs[%0];\n" : : "r"(obj));
   lua_pop(L, 1);
   return 0;
@@ -136,6 +144,11 @@ FlashObj* push_newflashref(lua_State *L)
   FlashObj *result = (FlashObj*)lua_newuserdata(L, sizeof(FlashObj));
   luaL_getmetatable(L, FlashObjectType);
   lua_setmetatable(L, -2);
+
+  luaL_getsubtable(L, LUA_REGISTRYINDEX, "flash_refs");
+  lua_pushvalue(L,-2);
+  lua_rawseti(L,-2, result); // Store a reference
+  lua_pop(L,1);
   //inline_nonreentrant_as3("trace(\"ref \" + %0);\n" :  : "r"(result));
   return result;
 }
@@ -536,6 +549,11 @@ static int flash_new (lua_State *L) {
     "};\n"
     : : "r"(result)
   );
+  inline_as3("__lua_objrefs[__lua_objrefs[%0]] = %0;\n" : : "r"(result));
+  luaL_getsubtable(L, LUA_REGISTRYINDEX, "flash_refs");
+  lua_pushvalue(L,-2);
+  lua_rawseti(L,-2, result); // Store a reference
+  lua_pop(L,1);
   return 1;
 }
 
@@ -797,7 +815,7 @@ static int flash_closure_apply (lua_State *L) {
         const char *s = luaL_checklstring(L, i, &l);
         AS3_DeclareVar(strvar, String);
         AS3_CopyCStringToVar(strvar, s, l);
-        inline_as3("args.push(strvar);\n");
+        inline_nonreentrant_as3("args.push(strvar);\n");
         break;
       }
       case LUA_TTHREAD:
@@ -877,10 +895,44 @@ static int flash_closure_apply (lua_State *L) {
       break;
     case 0: // Ok we'll push your god damn flash reference fine
       ;
-      // Push the new userdata onto the stack
-      FlashObj *resRef = push_newflashref(L);
-      // Get the prop, and store it with the new key
-      inline_as3("__lua_objrefs[%0] = result;\n" : : "r"(resRef) );
+      int u_ref = LUA_NOREF;
+      inline_as3(
+        "if (result in __lua_objrefs) {\n"
+        "  %0 = __lua_objrefs[result];\n"
+        "} else {\n"
+        "  %0 = -2;\n"
+        "}\n" : "=r"(u_ref) : 
+      );
+
+      if (u_ref == LUA_NOREF) {
+        // Push the new userdata onto the stack
+        FlashObj *as3udata = push_newflashref(L);
+        
+        // Get the prop, and store it with the new key
+        inline_as3("__lua_objrefs[%0] = result;\n" : : "r"(as3udata));
+        inline_as3("__lua_objrefs[result] = %0;\n" : : "r"(as3udata));
+      } else { // We already have this object...
+        luaL_getsubtable(L, LUA_REGISTRYINDEX, "flash_refs");
+        lua_rawgeti(L,-1, u_ref);
+        lua_replace(L,-2);
+      }
+
+      int t_ref = LUA_NOREF;
+      inline_as3(
+        "if (result.constructor in __lua_typerefs[%1]) {\n"
+        "  %0 = int(__lua_typerefs[%1][result.constructor]);\n"
+        "} else {\n" 
+        "  %0 = -2;\n"
+        "}\n"
+        : "=r"(t_ref)
+        : "r"(L)
+      );
+      if (t_ref != LUA_NOREF) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, t_ref);
+        lua_pushvalue(L,-2);
+        lua_pcall(L, 1, 1, 0);
+        lua_replace(L,-2);
+      }
       break;
   }
 
@@ -1033,10 +1085,44 @@ static int flash_metacall (lua_State *L) {
       break;
     case 0: // Ok we'll push your god damn flash reference fine
       ;
-      // Push the new userdata onto the stack
-      FlashObj *resRef = push_newflashref(L);
-      // Get the prop, and store it with the new key
-      inline_as3("__lua_objrefs[%0] = result;\n" : : "r"(resRef) );
+      int u_ref = LUA_NOREF;
+      inline_as3(
+        "if (result in __lua_objrefs) {\n"
+        "  %0 = __lua_objrefs[result];\n"
+        "} else {\n"
+        "  %0 = -2;\n"
+        "}\n" : "=r"(u_ref) : 
+      );
+
+      if (u_ref == LUA_NOREF) {
+        // Push the new userdata onto the stack
+        FlashObj *as3udata = push_newflashref(L);
+        
+        // Get the prop, and store it with the new key
+        inline_as3("__lua_objrefs[%0] = result;\n" : : "r"(as3udata));
+        inline_as3("__lua_objrefs[result] = %0;\n" : : "r"(as3udata));
+      } else { // We already have this object...
+        luaL_getsubtable(L, LUA_REGISTRYINDEX, "flash_refs");
+        lua_rawgeti(L,-1, u_ref);
+        lua_replace(L,-2);
+      }
+
+      int t_ref = LUA_NOREF;
+      inline_as3(
+        "if (result.constructor in __lua_typerefs[%1]) {\n"
+        "  %0 = int(__lua_typerefs[%1][result.constructor]);\n"
+        "} else {\n" 
+        "  %0 = -2;\n"
+        "}\n"
+        : "=r"(t_ref)
+        : "r"(L)
+      );
+      if (t_ref != LUA_NOREF) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, t_ref);
+        lua_pushvalue(L,-2);
+        lua_pcall(L, 1, 1, 0);
+        lua_replace(L,-2);
+      }
       break;
   }
 
@@ -1229,11 +1315,43 @@ static int flash_safegetprop(lua_State *L) {
         break;
       case 0:
         lua_pop(L,1);
-        // Push the new userdata onto the stack
-        FlashObj *result = push_newflashref(L);
+        int u_ref = LUA_NOREF;
+        inline_as3(
+          "if (o2 in __lua_objrefs) {\n"
+          "  %0 = __lua_objrefs[o2];\n"
+          "} else {\n"
+          "  %0 = -2;\n"
+          "}\n" : "=r"(u_ref) : 
+        );
 
-        // Get the prop, and store it with the new key
-        inline_as3("__lua_objrefs[%0] = o2;\n" : : "r"(result) );
+        if (u_ref == LUA_NOREF) {
+          // Push the new userdata onto the stack
+          FlashObj *result = push_newflashref(L);
+          
+          // Get the prop, and store it with the new key
+          inline_as3("__lua_objrefs[%0] = o2;\n" : : "r"(result));
+          inline_as3("__lua_objrefs[o2] = %0;\n" : : "r"(result));
+        } else { // We already have this object...
+          luaL_getsubtable(L, LUA_REGISTRYINDEX, "flash_refs");
+          lua_rawgeti(L,-1, u_ref);
+          lua_replace(L,-2);
+        }
+        int t_ref = LUA_NOREF;
+        inline_as3(
+          "if (o2.constructor in __lua_typerefs[%1]) {\n"
+          "  %0 = int(__lua_typerefs[%1][o2.constructor]);\n"
+          "} else {\n" 
+          "  %0 = -2;\n"
+          "}\n"
+          : "=r"(t_ref)
+          : "r"(L)
+        );
+        if (t_ref != LUA_NOREF) {
+          lua_rawgeti(L, LUA_REGISTRYINDEX, t_ref);
+          lua_pushvalue(L,-2);
+          lua_pcall(L, 1, 1, 0);
+          lua_replace(L,-2);
+        }
         break;
     }
   } else {
@@ -1258,10 +1376,12 @@ static int flash_safesetprop (lua_State *L) {
         int ref = luaL_ref(L, LUA_REGISTRYINDEX);
         AS3_DeclareVar(luastate, int);
         AS3_CopyScalarToVar(luastate, L);
+        AS3_DeclareVar(lfRef, int);
+        AS3_CopyScalarToVar(lfRef, ref);
         inline_as3(
         "propVal = function(...vaargs):void"
         "{"
-        "  Lua.lua_rawgeti(luastate, %1, %0);"
+        "  Lua.lua_rawgeti(luastate, %0, lfRef);"
         "  for(var i:int = 0; i<vaargs.length;i++) {"
         "    pushAS3(luastate,vaargs[i]);"
         "  };"
@@ -1269,7 +1389,7 @@ static int flash_safesetprop (lua_State *L) {
         "  if (errNum != 0) {"
         "    trace(Lua.lua_tolstring(luastate, -1, 0));"
         "  }"
-        "};\n" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
+        "};\n" : : "r"(LUA_REGISTRYINDEX));
         break;
       }
       case LUA_TUSERDATA: inline_as3("propVal = __lua_objrefs[%0];\n" : : "r"(getObjRef(L, 3))); break;
@@ -1342,6 +1462,7 @@ static int flash_toarray (lua_State *L) {
 
   // Get the prop, and store it with the new key
   inline_as3("__lua_objrefs[%0] = arr;\n" : : "r"(result) );
+  inline_as3("__lua_objrefs[arr] = %0;\n" : : "r"(result) );
   return 1;
 }
 
@@ -1419,7 +1540,8 @@ static int flash_toobject (lua_State *L) {
   FlashObj *result = push_newflashref(L);
 
   // Get the prop, and store it with the new key
-  inline_as3("__lua_objrefs[%0] = object;\n" : : "r"(result) );
+  inline_as3("__lua_objrefs[%0] = object;\n" : : "r"(result));
+  inline_as3("__lua_objrefs[object] = %0;\n" : : "r"(result));
   return 1;
 }
 
@@ -1430,6 +1552,14 @@ static int flash_type (lua_State *L) {
   inline_as3("%0 = CModule.mallocString(getQualifiedClassName(__lua_objrefs[%1]));\n" : "=r"(str) : "r"(obj));
   lua_pushfstring(L,str);
   return 1;
+}
+
+static int flash_register (lua_State *L){
+  FlashObj obj = getObjRef(L, 1);
+  luaL_checktype(L, 2, LUA_TFUNCTION);
+  int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+  inline_as3("__lua_typerefs[%0][__lua_objrefs[%1].constructor] = %2;\n" : : "r"(L), "r"(obj), "r"(ref));
+  return 0;
 }
 
 
@@ -1487,6 +1617,7 @@ static const luaL_Reg flashlib[] = {
   {"toarray", flash_toarray},
   {"toobject", flash_toobject},
   {"type", flash_type},
+  {"registerConversion", flash_register},
 
   {NULL, NULL}
 };
@@ -1507,5 +1638,15 @@ LUAMOD_API int luaopen_flash (lua_State *L) {
   //lua_rawset(L, -3);
   lua_pop(L, 1);
 
+  lua_pushliteral(L, "flash_refs");
+  lua_newtable(L);
+  lua_newtable(L);
+  lua_pushliteral(L, "__mode");
+  lua_pushliteral(L, "v");
+  lua_settable(L, -3);
+  lua_setmetatable(L,-2);
+  lua_settable(L,LUA_REGISTRYINDEX);
+
+  inline_as3("import flash.utils.Dictionary; __lua_typerefs[%0] = new Dictionary();\n" : : "r"(L));
   return 1;
 }
