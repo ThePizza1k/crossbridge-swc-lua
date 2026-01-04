@@ -8,6 +8,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "AS3/AS3.h"
+
 #define lstate_c
 #define LUA_CORE
 
@@ -316,6 +318,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
 
 LUA_API void lua_close (lua_State *L) {
   L = G(L)->mainthread;  /* only the main thread can be closed */
+  inline_as3("delete __lua_typerefs[%0];\n" : : "r"(L)); // CROSSBRIDGE PATCH
   lua_lock(L);
   close_state(L);
 }

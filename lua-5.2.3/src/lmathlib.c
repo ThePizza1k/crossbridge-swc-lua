@@ -229,6 +229,41 @@ static int math_randomseed (lua_State *L) {
   return 0;
 }
 
+static int math_clamp (lua_State *L) {
+  lua_Number val = luaL_checknumber(L, 1);
+  lua_Number min = luaL_checknumber(L, 2);
+  lua_Number max = luaL_checknumber(L, 3);
+  luaL_argcheck(L, min <= max, 2, "minimum must be less than or equal to maximum");
+  if (val < min) {
+    lua_pop(L,1);
+  } else if (val <= max) {
+    lua_pop(L,2);
+  }
+  return 1;  
+}
+
+static int math_sign (lua_State *L) {
+  lua_Number val = luaL_checknumber(L, 1);
+  if (val < 0) {
+    lua_pushnumber(L, -1);
+  } else if (val > 0) {
+    lua_pushnumber(L, 1);
+  } else {
+    lua_pushnumber(L, 0);
+  }
+  return 1;
+}
+
+static int math_round (lua_State *L) {
+  lua_Number val = luaL_checknumber(L, 1);
+  if (val < 0.0) {
+    lua_pushnumber(L,l_mathop(ceil)(val - 0.5));
+  } else {
+    lua_pushnumber(L,l_mathop(floor)(val + 0.5));
+  }
+  return 1;
+}
+
 
 static const luaL_Reg mathlib[] = {
   {"abs",   math_abs},
@@ -261,6 +296,9 @@ static const luaL_Reg mathlib[] = {
   {"sqrt",  math_sqrt},
   {"tanh",   math_tanh},
   {"tan",   math_tan},
+  {"clamp", math_clamp},
+  {"sign", math_sign},
+  {"round", math_round},
   {NULL, NULL}
 };
 

@@ -257,6 +257,37 @@ static int sort (lua_State *L) {
 /* }====================================================== */
 
 
+// find
+
+static int tfind (lua_State *L) {
+  luaL_checktype (L, 1, LUA_TTABLE);
+  luaL_checkany (L, 2);
+  int index = 1;
+  switch(lua_gettop(L)){
+    case 3:
+      index = luaL_checkint(L, 3); // Intentional fallthrough.
+      lua_pop(L,1);
+    case 2:
+      luaL_argcheck(L, lua_type(L,2) != LUA_TNIL, 2, "Expected non-nil value");
+      break;
+    default:
+      return luaL_error(L,"Expected 2 or 3 arguments, got %d", lua_gettop(L));
+  }
+  while(1) {
+    lua_rawgeti(L, 1, index); // Push value onto stack.
+    if (lua_isnil(L,-1)) {
+      lua_pushnil(L);
+      return 1;
+    }
+    if (lua_compare(L,2,-1,LUA_OPEQ)){
+      lua_pushinteger(L, index);
+      return 1;
+    }
+    index++; 
+  }
+  return 0; // ???
+}
+
 static const luaL_Reg tab_funcs[] = {
   {"concat", tconcat},
 #if defined(LUA_COMPAT_MAXN)
@@ -267,6 +298,7 @@ static const luaL_Reg tab_funcs[] = {
   {"unpack", unpack},
   {"remove", tremove},
   {"sort", sort},
+  {"find", tfind},
   {NULL, NULL}
 };
 
