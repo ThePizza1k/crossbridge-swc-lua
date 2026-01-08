@@ -1047,6 +1047,7 @@ static int flash_metacall (lua_State *L) {
     "    case 7: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6]); break;\n"
     "    case 8: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]); break;\n"
     "    case 9: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]); break;\n"
+    "    default: result = __lua_objrefs[%1].apply(__lua_objrefs[%1],args); break;\n"
     "  };\n"
     "} catch(e : Error) {\n"
     "  %0 = 1;\n"
