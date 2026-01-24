@@ -350,6 +350,21 @@ void _wrap_LUAI_MAXNUMBER2STR() {
 }
 
 
+__attribute__((annotate("as3sig:public function _wrap_LUA_IEEEENDIAN():int")))
+void _wrap_LUA_IEEEENDIAN() {
+  int result ;
+  
+  result = 0;
+  {
+    AS3_DeclareVar(asresult, int);
+    AS3_CopyScalarToVar(asresult, result);
+  }
+  {
+    AS3_ReturnAS3Var(asresult);
+  }
+}
+
+
 __attribute__((annotate("as3sig:public function _wrap_LUA_VERSION_MAJOR():String")))
 void _wrap_LUA_VERSION_MAJOR() {
   char *result ;

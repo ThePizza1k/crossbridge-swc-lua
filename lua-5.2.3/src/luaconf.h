@@ -527,6 +527,7 @@
 
 /* assume IEEE754 and a 32-bit integer type */
 #define LUA_IEEE754TRICK
+#define LUA_IEEEENDIAN		0    // This is known
 
 #endif								/* } */
 

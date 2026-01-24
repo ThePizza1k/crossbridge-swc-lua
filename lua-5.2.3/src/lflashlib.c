@@ -478,7 +478,7 @@ static int flash_asstring (lua_State *L) {
   lua_pop(L, 1);
   char *result = NULL;
   inline_as3("%0 = CModule.mallocString(\"\"+__lua_objrefs[%1] as String);\n" : "=r"(result) : "r"(obj));
-  lua_pushfstring(L, result);
+  lua_pushfstring(L, "%s", result);
   free(result);
   return 1;
 }
@@ -889,7 +889,7 @@ static int flash_closure_apply (lua_State *L) {
       ;
       char *str = NULL;
       inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(str) : );
-      lua_pushfstring(L, str);
+      lua_pushfstring(L, "%s", str);
       free(str);
       break;
     case 4: // Wtf?
@@ -1090,7 +1090,7 @@ static int flash_metacall (lua_State *L) {
       ;
       char *str = NULL;
       inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(str) : );
-      lua_pushfstring(L, str);
+      lua_pushfstring(L, "%s", str);
       free(str);
       break;
     case 4: // Wtf?
@@ -1265,7 +1265,7 @@ static int flash_tolua(lua_State *L) {
       ;
       char *str = NULL;
       inline_as3("%0 = CModule.mallocString(\"\"+ o as String);\n" : "=r"(str) : );
-      lua_pushfstring(L, str);
+      lua_pushfstring(L, "%s", str);
       free(str);
       break;
     case 4: // Is null.
@@ -1326,7 +1326,7 @@ static int flash_safegetprop(lua_State *L) {
         lua_pop(L,1);
         char *str = NULL;
         inline_as3("%0 = CModule.mallocString(\"\"+ o2 as String);\n" : "=r"(str) : );
-        lua_pushfstring(L, str); // There's a reason to use pushfstring, right? Right?
+        lua_pushfstring(L, "%s", str); // There's a reason to use pushfstring, right? Right?
         free(str);
         break;
       case 4: // Its a function
@@ -1587,7 +1587,7 @@ static int flash_type (lua_State *L) {
   char *str = NULL;
   inline_as3("import flash.utils.getQualifiedClassName;\n");
   inline_as3("%0 = CModule.mallocString(getQualifiedClassName(__lua_objrefs[%1]));\n" : "=r"(str) : "r"(obj));
-  lua_pushfstring(L,str);
+  lua_pushfstring(L,"%s",str);
   return 1;
 }
 

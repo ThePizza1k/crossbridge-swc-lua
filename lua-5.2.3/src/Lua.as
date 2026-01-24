@@ -540,6 +540,10 @@ public class Lua {
 		return _wrap_LUAI_MAXNUMBER2STR();
 	}
 
+	public static function get LUA_IEEEENDIAN():int{
+		return _wrap_LUA_IEEEENDIAN();
+	}
+
 	public static function get LUA_VERSION_MAJOR():String{
 		return _wrap_LUA_VERSION_MAJOR();
 	}

@@ -236,10 +236,10 @@ static int math_clamp (lua_State *L) {
   luaL_argcheck(L, min <= max, 2, "minimum must be less than or equal to maximum");
   if (val < min) {
     lua_pushnumber(L,min);
-  } else if (val <= max) {
-    lua_pushnumber(L,val);
-  } else {
+  } else if (val > max) {
     lua_pushnumber(L,max);
+  } else {
+    lua_pushnumber(L,val);
   }
   return 1;  
 }
