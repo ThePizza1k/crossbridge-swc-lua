@@ -7,7 +7,7 @@
 PLAT= none
 
 CC= gcc
-CFLAGS= -O2 -Wall -Wextra -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
+CFLAGS= -O4 -Wall -Wextra -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 
@@ -123,7 +123,8 @@ solaris:
 flash:
 	PATH="$(FLASCC)/usr/bin:$(PATH)" $(MAKE) liblua.a SYSCFLAGS="-DLUA_USE_POSIX" MYCFLAGS="-emit-llvm"
 	"$(FLASCC)/usr/bin/swig" -as3 -module Lua -outdir . -includeall -ignoremissing as3api.h
-	java -jar "$(NP_FLASCC)/usr/lib/asc2.jar" -import "$(NP_FLASCC)/usr/lib/builtin.abc" -import "$(NP_FLASCC)/usr/lib/playerglobal.abc" Lua.as
+	#java -jar "$(NP_FLASCC)/usr/lib/asc2.jar" -import "$(NP_FLASCC)/usr/lib/builtin.abc" -import "$(NP_FLASCC)/usr/lib/playerglobal.abc" LuaReference.as
+	java -jar "$(NP_FLASCC)/usr/lib/asc2.jar" -merge -md -AS3 -optimize -import "$(NP_FLASCC)/usr/lib/builtin.abc" -import "$(NP_FLASCC)/usr/lib/playerglobal.abc" Lua.as LuaReference.as LuaEnums.as -out Lua
 	"$(FLASCC)/usr/bin/gcc" $(OPT_FLAGS) -c as3api_wrap.c
 	"$(FLASCC)/usr/bin/nm" -f posix as3api_wrap.o | awk '{print $$1}' | sed 's/_//' > exports.txt
 	echo "_start1" >> exports.txt
@@ -204,4 +205,3 @@ lvm.o: lvm.c lua.h luaconf.h ldebug.h lstate.h lobject.h llimits.h ltm.h \
  lzio.h lmem.h ldo.h lfunc.h lgc.h lopcodes.h lstring.h ltable.h lvm.h
 lzio.o: lzio.c lua.h luaconf.h llimits.h lmem.h lstate.h lobject.h ltm.h \
  lzio.h
-

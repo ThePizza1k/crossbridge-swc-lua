@@ -51,6 +51,8 @@ package_as3(
   "    } else if (obj is Function) {\n"
   "      var fnptr:int = Lua.push_flashref(L);\n"
   "      __lua_objrefs[fnptr] = obj;\n"
+  "    } else if (obj is LuaReference) {\n"
+  "      Lua.lua_rawgeti(L,LUA_REGISTRYINDEX,obj.ref);\n"
   "    } else if (obj == null) {\n"
   "      Lua.lua_pushnil(L);\n"
   "    } else {\n"
@@ -143,7 +145,7 @@ static const luaL_Reg FlashObj_meta[] = {
   {"__tostring",  FlashObj_tostring},
   {"__index",     flash_safegetprop},
   {"__newindex",  flash_safesetprop},
-  {"__call",    flash_metacall}, // Limited to 9 args, but acceptable for directly provided functions.
+  {"__call",    flash_metacall},
   {0, 0}
 };
 
@@ -778,6 +780,7 @@ static int flash_closure_apply (lua_State *L) {
   FlashObj *thisobj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(1)); // These are also guaranteed to be flash userdata.
 
   inline_as3("var args:Array = [];\n");
+  inline_as3("var refs:Array = [];\n");
 
   int i = 1;
   while(i <= top) {
@@ -786,31 +789,13 @@ static int flash_closure_apply (lua_State *L) {
       case LUA_TBOOLEAN: inline_as3("args.push(Boolean(%0));\n" : : "r"(lua_toboolean(L, i))); break;
       case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
       case LUA_TFUNCTION:
-      {
-        lua_settop(L, top+1);
-        lua_copy(L, i, top+1);
-        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        AS3_DeclareVar(luastate, int);
-        AS3_CopyScalarToVar(luastate, L);
-        AS3_DeclareVar(lfRef, int);
-        AS3_CopyScalarToVar(lfRef, ref);
-        inline_as3(
-        "args.push(function(...vaargs):void"
-        "{"
-        "  Lua.lua_rawgeti(luastate, %0, lfRef);"
-        "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    pushAS3(luastate,vaargs[i]);"
-        "  };"
-        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
-        "  if (errNum != 0) {"
-        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
-        "  }"
-        "});" : : "r"(LUA_REGISTRYINDEX));
-        break;
-      }
       case LUA_TTABLE:
+      case LUA_TTHREAD:
       {
-        inline_as3("args.push(null);\n" : : ); // Temporary
+        lua_pushvalue(L,i);
+        int ref = luaL_ref(L,LUA_REGISTRYINDEX);
+        inline_as3("var luaRef:LuaReference = new LuaReference(%0, %1);\n" : : "r"(L), "r"(ref));
+        inline_as3("args.push(luaRef); refs.push(luaRef);\n" : : );
         break;
       }
       case LUA_TUSERDATA: 
@@ -825,11 +810,6 @@ static int flash_closure_apply (lua_State *L) {
         AS3_DeclareVar(strvar, String);
         AS3_CopyCStringToVar(strvar, s, l);
         inline_nonreentrant_as3("args.push(strvar);\n");
-        break;
-      }
-      case LUA_TTHREAD:
-      {
-        inline_as3("args.push(null);\n" : : ); // Should push some sort of object for this indicating "unconvertible".
         break;
       }
       default:
@@ -850,6 +830,9 @@ static int flash_closure_apply (lua_State *L) {
     "} catch(e : Error) {\n"
     "  %0 = 1;\n"
     "  result = e.message;\n"
+    "  for (var i:int = 0; i < refs.length; i++){\n"
+    "    refs[i].free();"
+    "  }\n"
     "}"
     : "=r" (err)
     : "r"(funcobj), "r"(thisobj)
@@ -870,6 +853,7 @@ static int flash_closure_apply (lua_State *L) {
     "else if (result is String) {%0 = 3;}"
     "else if (result is Function) {%0 = 4;}"
     "else if (result == null || result == undefined) {%0 = 5;}"
+    "else if (result is LuaReference) {%0 = 6;}"
     "else {%0 = 0;}\n" : "=r"(type) : );
 
   switch (type) {
@@ -901,6 +885,16 @@ static int flash_closure_apply (lua_State *L) {
       break;
     case 5: // it's null.
       lua_pushnil(L);
+      break;
+    case 6:
+      ; // right.
+      int refNum = LUA_NOREF;
+      inline_as3("%0 = (o2 as LuaReference).ref;\n" : "=r"(refNum) : );
+      if (refNum == LUA_NOREF) {
+        return luaL_error(L,"Received freed LuaReference");
+      } else {
+        lua_rawgeti(L,LUA_REGISTRYINDEX,refNum);
+      }
       break;
     case 0: // Ok we'll push your god damn flash reference fine
       ;
@@ -1071,6 +1065,7 @@ static int flash_metacall (lua_State *L) {
     "else if (result is String) {%0 = 3;}"
     "else if (result is Function) {%0 = 4;}"
     "else if (result == null || result == undefined) {%0 = 5;}"
+    "else if (result is LuaReference) {%0 = 6;}"
     "else {%0 = 0;}" : "=r"(type) : );
 
   switch (type) {
@@ -1101,6 +1096,16 @@ static int flash_metacall (lua_State *L) {
       break;
     case 5: // it's null.
       lua_pushnil(L);
+      break;
+    case 6:
+      ; // right.
+      int refNum = LUA_NOREF;
+      inline_as3("%0 = (o2 as LuaReference).ref;\n" : "=r"(refNum) : );
+      if (refNum == LUA_NOREF) {
+        return luaL_error(L,"Received freed LuaReference");
+      } else {
+        lua_rawgeti(L,LUA_REGISTRYINDEX,refNum);
+      }
       break;
     case 0: // Ok we'll push your god damn flash reference fine
       ;
@@ -1299,6 +1304,7 @@ static int flash_safegetprop(lua_State *L) {
       "else if (o2 is String) {%0 = 3;}"
       "else if (o2 is Function) {%0 = 4;}"
       "else if (o2 == null || o2 == undefined) {%0 = 5;}"
+      "else if (o2 is LuaReference) {%0 = 6;}"
       "else {%0 = 0;}" : "=r"(type) : );
     /*
     inline_as3(
@@ -1340,6 +1346,16 @@ static int flash_safegetprop(lua_State *L) {
       case 5: // Null or undefined.. either one
         lua_pop(L,1);
         lua_pushnil(L);
+        break;
+      case 6:
+        ; // right.
+        int refNum = LUA_NOREF;
+        inline_as3("%0 = (o2 as LuaReference).ref;\n" : "=r"(refNum) : );
+        if (refNum == LUA_NOREF) {
+          return luaL_error(L,"Received freed LuaReference");
+        } else {
+          lua_rawgeti(L,LUA_REGISTRYINDEX,refNum);
+        }
         break;
       case 0:
         lua_pop(L,1);
@@ -1438,11 +1454,18 @@ static int flash_safesetprop (lua_State *L) {
         inline_as3("propVal = strvar;\n" : :);
         break;
       }
+      case LUA_TTABLE:
+      case LUA_TTHREAD:
+      {
+        int l_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        inline_as3("propVal = new LuaReference(%0,%1);\n" : : "r"(L), "r"(l_ref));
+        break;
+      }
       default:
         inline_as3("trace(\"unknown: \" + %0);\n" :  : "r"(lua_type(L, 3)));
         return 0;
   }
-  inline_as3("try{__lua_objrefs[%0][propname] = propVal;} catch (e:Error) {}\n" : : "r"(o1));
+  inline_as3("try{__lua_objrefs[%0][propname] = propVal;} catch (e:Error) {if (propVal is LuaReference) {(propVal as LuaReference).free();}}\n" : : "r"(o1));
   lua_pop(L, 3);
   return 0; // Sorry what the fuck are we returning?
 }
@@ -1587,7 +1610,7 @@ static int flash_type (lua_State *L) {
   char *str = NULL;
   inline_as3("import flash.utils.getQualifiedClassName;\n");
   inline_as3("%0 = CModule.mallocString(getQualifiedClassName(__lua_objrefs[%1]));\n" : "=r"(str) : "r"(obj));
-  lua_pushfstring(L,"%s",str);
+  lua_pushfstring(L, "%s", str);
   return 1;
 }
 

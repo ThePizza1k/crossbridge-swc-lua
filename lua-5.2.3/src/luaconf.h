@@ -527,7 +527,7 @@
 
 /* assume IEEE754 and a 32-bit integer type */
 #define LUA_IEEE754TRICK
-#define LUA_IEEEENDIAN		0    // This is known
+#define LUA_IEEEENDIAN		0 // known
 
 #endif								/* } */
 
@@ -546,6 +546,7 @@
 */
 
 //#define LUA_USE_APICHECK
+// forcing rebuild
 
 #endif
 
