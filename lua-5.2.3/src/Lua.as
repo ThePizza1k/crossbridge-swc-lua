@@ -1448,6 +1448,14 @@ public class Lua {
 		return _wrap_luaopen_flash(L);
 	}
 
+	public static function get LUA_RANDLIBNAME():String{
+		return _wrap_LUA_RANDLIBNAME();
+	}
+
+	public static function luaopen_rand(L:int):int {
+		return _wrap_luaopen_rand(L);
+	}
+
 	public static function luaL_openlibs(L:int):void {
 		_wrap_luaL_openlibs(L);
 	}

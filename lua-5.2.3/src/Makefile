@@ -33,7 +33,7 @@ CORE_O=	lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o \
 	lmem.o lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o \
 	ltm.o lundump.o lvm.o lzio.o
 LIB_O=	lauxlib.o lbaselib.o lbitlib.o lcorolib.o ldblib.o liolib.o \
-	lmathlib.o loslib.o lstrlib.o ltablib.o loadlib.o linit.o lflashlib.o
+	lmathlib.o loslib.o lstrlib.o ltablib.o loadlib.o linit.o lflashlib.o lrandlib.o
 BASE_O= $(CORE_O) $(LIB_O) $(MYOBJS)
 
 LUA_T=	lua
@@ -124,7 +124,7 @@ flash:
 	PATH="$(FLASCC)/usr/bin:$(PATH)" $(MAKE) liblua.a SYSCFLAGS="-DLUA_USE_POSIX" MYCFLAGS="-emit-llvm"
 	"$(FLASCC)/usr/bin/swig" -as3 -module Lua -outdir . -includeall -ignoremissing as3api.h
 	#java -jar "$(NP_FLASCC)/usr/lib/asc2.jar" -import "$(NP_FLASCC)/usr/lib/builtin.abc" -import "$(NP_FLASCC)/usr/lib/playerglobal.abc" LuaReference.as
-	java -jar "$(NP_FLASCC)/usr/lib/asc2.jar" -merge -md -AS3 -optimize -import "$(NP_FLASCC)/usr/lib/builtin.abc" -import "$(NP_FLASCC)/usr/lib/playerglobal.abc" Lua.as LuaReference.as LuaEnums.as -out Lua
+	java -jar "$(NP_FLASCC)/usr/lib/asc2.jar" -merge -md -AS3 -optimize -import "$(NP_FLASCC)/usr/lib/builtin.abc" -import "$(NP_FLASCC)/usr/lib/playerglobal.abc" Lua.as LuaReference.as LuaEnums.as LuaState.as -out Lua
 	"$(FLASCC)/usr/bin/gcc" $(OPT_FLAGS) -c as3api_wrap.c
 	"$(FLASCC)/usr/bin/nm" -f posix as3api_wrap.o | awk '{print $$1}' | sed 's/_//' > exports.txt
 	echo "_start1" >> exports.txt
@@ -185,6 +185,7 @@ loslib.o: loslib.c lua.h luaconf.h lauxlib.h lualib.h
 lparser.o: lparser.c lua.h luaconf.h lcode.h llex.h lobject.h llimits.h \
  lzio.h lmem.h lopcodes.h lparser.h ldebug.h lstate.h ltm.h ldo.h lfunc.h \
  lstring.h lgc.h ltable.h
+lrandlib.o: lrandlib.c lua.h luaconf.h lauxlib.h lualib.h
 lstate.o: lstate.c lua.h luaconf.h lapi.h llimits.h lstate.h lobject.h \
  ltm.h lzio.h lmem.h ldebug.h ldo.h lfunc.h lgc.h llex.h lstring.h \
  ltable.h

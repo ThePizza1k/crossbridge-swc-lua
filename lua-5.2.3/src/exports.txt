@@ -63,6 +63,7 @@ _wrap_LUA_OPSUB
 _wrap_LUA_OPUNM
 _wrap_LUA_OSLIBNAME
 _wrap_LUA_QS
+_wrap_LUA_RANDLIBNAME
 _wrap_LUA_REFNIL
 _wrap_LUA_REGISTRYINDEX
 _wrap_LUA_RELEASE
@@ -253,6 +254,7 @@ _wrap_luaopen_io
 _wrap_luaopen_math
 _wrap_luaopen_os
 _wrap_luaopen_package
+_wrap_luaopen_rand
 _wrap_luaopen_string
 _wrap_luaopen_table
 _wrap_push_cfunction
@@ -408,6 +410,7 @@ luaopen_io
 luaopen_math
 luaopen_os
 luaopen_package
+luaopen_rand
 luaopen_string
 luaopen_table
 main

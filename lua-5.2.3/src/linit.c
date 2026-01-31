@@ -38,6 +38,7 @@ static const luaL_Reg loadedlibs[] = {
   {LUA_MATHLIBNAME, luaopen_math},
   {LUA_DBLIBNAME, luaopen_debug},
   {LUA_FLASHLIBNAME, luaopen_flash}, 
+  {LUA_RANDLIBNAME, luaopen_rand}, 
   {NULL, NULL}
 };
 

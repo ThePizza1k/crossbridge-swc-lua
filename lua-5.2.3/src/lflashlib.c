@@ -794,7 +794,7 @@ static int flash_closure_apply (lua_State *L) {
       {
         lua_pushvalue(L,i);
         int ref = luaL_ref(L,LUA_REGISTRYINDEX);
-        inline_as3("var luaRef:LuaReference = new LuaReference(%0, %1);\n" : : "r"(L), "r"(ref));
+        inline_as3("var luaRef:* = new LuaReference(%0, %1);\n" : : "r"(L), "r"(ref)); // Can't explicitly type luaRef or LLVM gets pissed.
         inline_as3("args.push(luaRef); refs.push(luaRef);\n" : : );
         break;
       }
@@ -830,10 +830,10 @@ static int flash_closure_apply (lua_State *L) {
     "} catch(e : Error) {\n"
     "  %0 = 1;\n"
     "  result = e.message;\n"
-    "  for (var i:int = 0; i < refs.length; i++){\n"
-    "    refs[i].free();"
-    "  }\n"
-    "}"
+    "}\n"
+    "for (var i:int = 0; i < refs.length; i++){\n" // Decrement reference count for any LuaReferences
+    "  refs[i].decRef();"
+    "}\n"
     : "=r" (err)
     : "r"(funcobj), "r"(thisobj)
   );
@@ -891,10 +891,11 @@ static int flash_closure_apply (lua_State *L) {
       int refNum = LUA_NOREF;
       inline_as3("%0 = (o2 as LuaReference).ref;\n" : "=r"(refNum) : );
       if (refNum == LUA_NOREF) {
-        return luaL_error(L,"Received freed LuaReference");
+        return luaL_error(L,"Received freed LuaReference"); // This should never be the case.
       } else {
         lua_rawgeti(L,LUA_REGISTRYINDEX,refNum);
       }
+      inline_as3("(o2 as LuaReference).decRef();");
       break;
     case 0: // Ok we'll push your god damn flash reference fine
       ;
@@ -963,6 +964,7 @@ static int flash_metacall (lua_State *L) {
   if (isFunction == 0) {lua_pop(L, top); return 0;} // Do nothing if not a function.
 
   inline_as3("var args:Array = [];\n");
+  inline_as3("var refs:Array = [];\n");
 
   int i = 2;
   while(i <= top) {
@@ -971,29 +973,13 @@ static int flash_metacall (lua_State *L) {
       case LUA_TBOOLEAN: inline_as3("args.push(%0);\n" : : "r"(lua_toboolean(L, i))); break;
       case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
       case LUA_TFUNCTION:
-      {
-        lua_settop(L, top+1);
-        lua_copy(L, i, top+1);
-        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        AS3_DeclareVar(luastate, int);
-        AS3_CopyScalarToVar(luastate, L);
-        inline_as3(
-        "args.push(function(...vaargs):void"
-        "{"
-        "  Lua.lua_rawgeti(luastate, %1, %0);"
-        "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    pushAS3(luastate,vaargs[i]);"
-        "  };"
-        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
-        "  if (errNum != 0) {"
-        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
-        "  }"
-        "});" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
-        break;
-      }
       case LUA_TTABLE:
+      case LUA_TTHREAD:
       {
-        inline_as3("args.push(null);\n" : : ); // Temporary
+        lua_pushvalue(L,i);
+        int ref = luaL_ref(L,LUA_REGISTRYINDEX);
+        inline_as3("var luaRef:* = new LuaReference(%0, %1);\n" : : "r"(L), "r"(ref)); // Can't explicitly type luaRef or LLVM gets pissed.
+        inline_as3("args.push(luaRef); refs.push(luaRef);\n" : : );
         break;
       }
       case LUA_TUSERDATA: 
@@ -1008,11 +994,6 @@ static int flash_metacall (lua_State *L) {
         AS3_DeclareVar(strvar, String);
         AS3_CopyCStringToVar(strvar, s, l);
         inline_as3("args.push(strvar);\n");
-        break;
-      }
-      case LUA_TTHREAD:
-      {
-        inline_as3("args.push(null);\n" : : ); // Should push some sort of object for this indicating "unconvertible".
         break;
       }
       default:
@@ -1047,6 +1028,9 @@ static int flash_metacall (lua_State *L) {
     "  %0 = 1;\n"
     "  result = e.message;\n"
     "}"
+    "for (var i:int = 0; i < refs.length; i++){\n"  // Decrement reference count for any LuaReferences
+    "  refs[i].decRef();"
+    "}\n"
     : "=r"(err) : "r"(funcobj)
   );
 
@@ -1102,10 +1086,11 @@ static int flash_metacall (lua_State *L) {
       int refNum = LUA_NOREF;
       inline_as3("%0 = (o2 as LuaReference).ref;\n" : "=r"(refNum) : );
       if (refNum == LUA_NOREF) {
-        return luaL_error(L,"Received freed LuaReference");
+        return luaL_error(L,"Received freed LuaReference"); // This should never be the case.
       } else {
         lua_rawgeti(L,LUA_REGISTRYINDEX,refNum);
       }
+      inline_as3("(o2 as LuaReference).decRef();");
       break;
     case 0: // Ok we'll push your god damn flash reference fine
       ;
@@ -1241,7 +1226,7 @@ static int flash_hasprop(lua_State *L) {
   return 1;
 }
 
-static int flash_tolua(lua_State *L) {
+static int flash_tolua(lua_State *L) { // deprecated? idk man.
   FlashObj *obj = getObjRef(L, 1);
   AS3_DeclareVar(o, Object);
   int type = 0;
@@ -1351,11 +1336,8 @@ static int flash_safegetprop(lua_State *L) {
         ; // right.
         int refNum = LUA_NOREF;
         inline_as3("%0 = (o2 as LuaReference).ref;\n" : "=r"(refNum) : );
-        if (refNum == LUA_NOREF) {
-          return luaL_error(L,"Received freed LuaReference");
-        } else {
-          lua_rawgeti(L,LUA_REGISTRYINDEX,refNum);
-        }
+        lua_rawgeti(L,LUA_REGISTRYINDEX,refNum);
+        inline_as3("(o2 as LuaReference).decRef();\n");
         break;
       case 0:
         lua_pop(L,1);
@@ -1424,27 +1406,6 @@ static int flash_safesetprop (lua_State *L) {
   switch(lua_type(L, 3)) {
       case LUA_TBOOLEAN: inline_as3("propVal = Boolean(%0);\n" : : "r"(lua_toboolean(L, 3))); break;
       case LUA_TNUMBER: inline_as3("propVal = %0;\n" : : "r"(luaL_checknumber(L, 3))); break;
-      case LUA_TFUNCTION:
-      {
-        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        AS3_DeclareVar(luastate, int);
-        AS3_CopyScalarToVar(luastate, L);
-        AS3_DeclareVar(lfRef, int);
-        AS3_CopyScalarToVar(lfRef, ref);
-        inline_as3(
-        "propVal = function(...vaargs):void"
-        "{"
-        "  Lua.lua_rawgeti(luastate, %0, lfRef);"
-        "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    pushAS3(luastate,vaargs[i]);"
-        "  };"
-        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
-        "  if (errNum != 0) {"
-        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
-        "  }"
-        "};\n" : : "r"(LUA_REGISTRYINDEX));
-        break;
-      }
       case LUA_TUSERDATA: inline_as3("propVal = __lua_objrefs[%0];\n" : : "r"(getObjRef(L, 3))); break;
       case LUA_TSTRING:
       {
@@ -1454,6 +1415,7 @@ static int flash_safesetprop (lua_State *L) {
         inline_as3("propVal = strvar;\n" : :);
         break;
       }
+      case LUA_TFUNCTION:
       case LUA_TTABLE:
       case LUA_TTHREAD:
       {
@@ -1465,7 +1427,13 @@ static int flash_safesetprop (lua_State *L) {
         inline_as3("trace(\"unknown: \" + %0);\n" :  : "r"(lua_type(L, 3)));
         return 0;
   }
-  inline_as3("try{__lua_objrefs[%0][propname] = propVal;} catch (e:Error) {if (propVal is LuaReference) {(propVal as LuaReference).free();}}\n" : : "r"(o1));
+  inline_as3(
+    "try{\n"
+    "  __lua_objrefs[%0][propname] = propVal;\n"
+    "} catch (e:Error) {}\n" // Silence error.
+    "if (propVal is LuaReference) {(propVal as LuaReference).decRef();}" // Decrement reference count.
+    : 
+    : "r"(o1));
   lua_pop(L, 3);
   return 0; // Sorry what the fuck are we returning?
 }
@@ -1482,26 +1450,15 @@ static int flash_toarray (lua_State *L) {
       case LUA_TBOOLEAN: inline_as3("arr[%1] = Boolean(%0);\n" : : "r"(lua_toboolean(L, 2)), "r"(i)); break;
       case LUA_TNUMBER: inline_as3("arr[%1] = %0;\n" : : "r"(luaL_checknumber(L, 2)), "r"(i)); break;
       case LUA_TFUNCTION:
+      case LUA_TTABLE:
+      case LUA_TTHREAD:
       {
-        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        AS3_DeclareVar(luastate, int);
-        AS3_CopyScalarToVar(luastate, L);
-        inline_as3(
-        "arr[%2] = function(...vaargs):void"
-        "{"
-        "  Lua.lua_rawgeti(luastate, %1, %0);"
-        "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    pushAS3(luastate,vaargs[i]);"
-        "  };"
-        "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
-        "  if (errNum != 0) {"
-        "    trace(Lua.lua_tolstring(luastate, -1, 0));"
-        "  }"
-        "};\n" : : "r"(ref), "r"(LUA_REGISTRYINDEX), "r"(i));
+        lua_pushvalue(L,2);
+        int l_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        inline_as3("propVal = new LuaReference(%0,%1);\n" : : "r"(L), "r"(l_ref));
         break;
       }
       case LUA_TUSERDATA: inline_as3("arr[%1] = __lua_objrefs[%0];\n" : : "r"(getObjRef(L, 2)), "r"(i)); break;
-      case LUA_TTABLE: inline_as3("arr[%0] = new Object();\n" : : "r"(i)); break; // give it a plain ass object
       case LUA_TSTRING:
       {
         const char *s = luaL_checklstring(L, 2, &l);
@@ -1545,23 +1502,10 @@ static int flash_toobject (lua_State *L) {
       switch(lua_type(L, -1)) {
         case LUA_TBOOLEAN: inline_as3("object[keyVal] = Boolean(%0);\n" : : "r"(lua_toboolean(L, -1))); break;
         case LUA_TNUMBER: inline_as3("object[keyVal] = %0;\n" : : "r"(luaL_checknumber(L, -1))); break;
+        case LUA_TTHREAD: // Tables get converted too, but not these. They become LuaReferences.
         case LUA_TFUNCTION:
         {
-          int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-          AS3_DeclareVar(luastate, int);
-          AS3_CopyScalarToVar(luastate, L);
-          inline_as3(
-          "object[keyVal] = function(...vaargs):void"
-          "{"
-          "  Lua.lua_rawgeti(luastate, %1, %0);"
-          "  for(var i:int = 0; i<vaargs.length;i++) {"
-          "    pushAS3(luastate,vaargs[i]);"
-          "  };"
-          "  var errNum:int = Lua.lua_pcallk(luastate, vaargs.length, 0, 0, 0, null);"
-          "  if (errNum != 0) {"
-          "    trace(Lua.lua_tolstring(luastate, -1, 0));"
-          "  }"
-          "};\n" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
+          lua_pop(L, 1); // Just do nothing with these...
           break;
         }
         case LUA_TUSERDATA: inline_as3("object[keyVal] = __lua_objrefs[%0];\n" : : "r"(getObjRef(L, -1))); break;
