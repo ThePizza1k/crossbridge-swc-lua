@@ -1,4 +1,4 @@
-package
+package crossbridge.lua
 {
 	import crossbridge.lua.CModule;
 	import crossbridge.lua.__lua_objrefs;
