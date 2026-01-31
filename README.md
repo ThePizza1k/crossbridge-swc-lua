@@ -1,12 +1,6 @@
 crossbridge-swc-lua
 ===================
 
-[![Build Status](https://travis-ci.org/crossbridge-community/crossbridge-swc-lua.svg?branch=master)](https://travis-ci.org/crossbridge-community/crossbridge-swc-lua)
-
-[Example 1](http://www.vpmedia.hu/crossbridge/lua)
-
-[Example 2](http://www.vpmedia.hu/crossbridge/luastarling)
-
 ## Building the library
 
 1. Install [Adobe AIR SDK](https://www.adobe.com/devnet/air/air-sdk-download.html)
