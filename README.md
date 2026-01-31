@@ -1,6 +1,8 @@
 crossbridge-swc-lua
 ===================
 
+Modified version of crossbridge lua to better support running user code for Platform Racing 3.
+
 ## Building the library
 
 1. Install [Adobe AIR SDK](https://www.adobe.com/devnet/air/air-sdk-download.html)
@@ -14,7 +16,10 @@ crossbridge-swc-lua
 
 Check the Example(s) located at: src/main/actionscript
 
+You can also see the documentation on LuaState, LuaReference, and LuaEnums for use.
+
 ## Running the UnitTests
 
 1. Install [Gradle](http://www.gradle.org/)
 2. Run **gradle**
+3. Idk if these actually work I haven't run them.
