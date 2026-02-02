@@ -9,6 +9,8 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+#include "AS3/AS3.h"
+
 typedef unsigned long long int uint64_t;
 
 struct splitmix64_state {
@@ -58,6 +60,8 @@ void xoshiro256p_seed(struct xoshiro256p_state *state, uint64_t seed) {
   s[3] = splitmix64(&smstate);
 }
 
+// rng object closures
+
 static int rand_advance(lua_State *L) { // Accessed as closure.
   struct xoshiro256p_state *state = (struct xoshiro256p_state*) lua_touserdata(L,lua_upvalueindex(1));
   uint64_t result = ((xoshiro256p_next(state)>>12) | 0x3ff0000000000000ULL); // todo: figure out better way to do this
@@ -92,6 +96,8 @@ static int rand_seed(lua_State *L) { // Accessed as closure.
   double input;
   switch(argc){
     case 0: // TODO: some stuff to generate a seed.
+      inline_as3("%0 = Math.random();" : "=r"(input) : );
+      seed = *((uint64_t*)&input);
       break;
     case 1:
       input = luaL_checknumber(L,1);
@@ -110,12 +116,32 @@ static int rand_tostring(lua_State *L) { // also a closure.
   return 1;
 }
 
+// random library functions below
+
+static void rand_verify(lua_State *L, int index) {  // Throw an error if not a valid RNG object.
+  if (lua_type(L,index) != LUA_TUSERDATA) {
+    luaL_argerror(L, index, "expected RNG object");
+  }
+  int valid = luaL_getmetafield(L, index, "__type");
+  if (!valid) {
+    luaL_argerror(L, index, "expected RNG object");
+  } 
+  lua_pushliteral(L,"random");
+  valid = lua_compare(L, -1, -2, LUA_OPEQ);
+  lua_pop(L,2);
+  if (!valid) {
+    luaL_argerror(L, index, "expected RNG object");
+  }
+}
+
 static int rand_new(lua_State *L) {
   int argc = lua_gettop(L);
   uint64_t seed = 0ULL;
   double input;
   switch(argc){
     case 0: // TODO: some stuff to generate a seed.
+      inline_as3("%0 = Math.random();" : "=r"(input) : );
+      seed = *((uint64_t*)&input);
       break;
     case 1:
       input = luaL_checknumber(L,1);
@@ -144,9 +170,24 @@ static int rand_new(lua_State *L) {
   return 1;
 }
 
+static int rand_swap(lua_State *L) { // Swap the internal states of two RNG objects.
+  int argc = lua_gettop(L);
+  if (argc != 2) {
+    return luaL_error(L, "wrong number of arguments (expected 2, got %d)", argc);
+  }
+  rand_verify(L,1); // Verify first and second arguments are valid RNG objects.
+  rand_verify(L,2);
+  struct xoshiro256p_state temp;
+  struct xoshiro256p_state *state1 = (struct xoshiro256p_state*) lua_touserdata(L,1);
+  struct xoshiro256p_state *state2 = (struct xoshiro256p_state*) lua_touserdata(L,2);
+  temp = *state1; *state1 = *state2; *state2 = temp;
+  return 0;
+}
+
 
 static const luaL_Reg randlib[] = {
-  {"new",   rand_new},
+  {"new",    rand_new},
+  {"swap",  rand_swap},
   {NULL, NULL}
 };
 
