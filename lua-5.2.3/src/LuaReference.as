@@ -241,12 +241,12 @@ package crossbridge.lua{
 				for (i = 1; i <= results; i++){
 					arr[i] = this.getAS3(i);
 				}
-				Lua.lua_pop(this.luaState, results);
+				Lua.lua_pop(this.L, results);
 				arr[0] = errCode;
 				return arr;
 			} else {
 				var str:String = this.getAS3(-1);
-				Lua.lua_pop(this.luaState, 1);
+				Lua.lua_pop(this.L, 1);
 				trace("Lua error: " + str);
 				return [errCode,str];
 			}

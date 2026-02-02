@@ -129,9 +129,9 @@ package crossbridge.lua
 			for (i = 0; i < args.length; i++){
 				pushAS3(this.luaState,args[i]);
 			}
-			var errCode:int = Lua.lua_pcallk(this.L, args.length, Lua.LUA_MULTRET, 0, 0, null); // lua_call is defined as a macro, so its not available to us. this is equivalent.
+			var errCode:int = Lua.lua_pcallk(this.luaState, args.length, Lua.LUA_MULTRET, 0, 0, null); // lua_call is defined as a macro, so its not available to us. this is equivalent.
 			if (errCode == 0) {
-				var results:int = Lua.lua_gettop(this.L);
+				var results:int = Lua.lua_gettop(this.luaState);
 				var arr:Array = new Array(results + 1);
 				for (i = 1; i <= results; i++){
 					arr[i] = getAS3(this.luaState,i);
