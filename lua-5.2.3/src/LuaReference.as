@@ -239,13 +239,13 @@ package crossbridge.lua{
 				var results:int = Lua.lua_gettop(this.L);
 				var arr:Array = new Array(results + 1);
 				for (i = 1; i <= results; i++){
-					arr[i] = this.getAS3(i);
+					arr[i] = getAS3(this.L, i);
 				}
 				Lua.lua_pop(this.L, results);
 				arr[0] = errCode;
 				return arr;
 			} else {
-				var str:String = this.getAS3(-1);
+				var str:String = getAS3(this.L,-1);
 				Lua.lua_pop(this.L, 1);
 				trace("Lua error: " + str);
 				return [errCode,str];
