@@ -30,6 +30,7 @@ static inline uint64_t rotl(const uint64_t x, int k) {
 
 struct xoshiro256p_state {
   uint64_t s[4]; 
+  double seed;
 };
 
 uint64_t xoshiro256p_next(struct xoshiro256p_state *state) { // this is a lot of 64-bit operations but they're cheap enough to not care.
@@ -95,7 +96,7 @@ static int rand_seed(lua_State *L) { // Accessed as closure.
   uint64_t seed = 0ULL;
   double input;
   switch(argc){
-    case 0: // TODO: some stuff to generate a seed.
+    case 0:
       inline_as3("%0 = Math.random();" : "=r"(input) : );
       seed = *((uint64_t*)&input);
       break;
@@ -108,13 +109,27 @@ static int rand_seed(lua_State *L) { // Accessed as closure.
   }
   struct xoshiro256p_state *state = (struct xoshiro256p_state*) lua_touserdata(L,lua_upvalueindex(1));
   xoshiro256p_seed(state, seed);
+  state->seed = input;
   return 0;
+}
+
+static int rand_getseed(lua_State *L) { // Closure
+  struct xoshiro256p_state *state = (struct xoshiro256p_state*) lua_touserdata(L,lua_upvalueindex(1));
+  lua_pushnumber(L, state->seed);
+  return 1;
 }
 
 static int rand_tostring(lua_State *L) { // also a closure.
   lua_pushfstring(L, "(RNG : %p)", lua_touserdata(L,lua_upvalueindex(1)));
   return 1;
 }
+
+static const luaL_Reg randClosures[] = {
+  {"random", rand_advance},
+  {"randomseed", rand_seed},
+  {"getseed", rand_getseed},
+  {NULL, NULL}
+};
 
 // random library functions below
 
@@ -139,7 +154,7 @@ static int rand_new(lua_State *L) {
   uint64_t seed = 0ULL;
   double input;
   switch(argc){
-    case 0: // TODO: some stuff to generate a seed.
+    case 0:
       inline_as3("%0 = Math.random();" : "=r"(input) : );
       seed = *((uint64_t*)&input);
       break;
@@ -150,23 +165,19 @@ static int rand_new(lua_State *L) {
     default:
       return luaL_error(L, "wrong number of arguments (expected 0 or 1, got %d)", argc);
   }
-  struct xoshiro256p_state *state = (struct xoshiro256p_state*) lua_newuserdata(L,sizeof(struct xoshiro256p_state));
+  lua_settop(L,0);
+  struct xoshiro256p_state *state = (struct xoshiro256p_state*) lua_newuserdata(L,sizeof(struct xoshiro256p_state)); // index 1
   xoshiro256p_seed(state, seed);
-  lua_newtable(L); // metatable
-  lua_newtable(L); // __index table
-  lua_pushvalue(L,-3); // push udata
-  lua_pushcclosure(L,rand_advance,1);
-  lua_setfield(L,-2,"random"); // set in __index
-  lua_pushvalue(L,-3); // push udata
-  lua_pushcclosure(L,rand_seed,1);
-  lua_setfield(L,-2,"randomseed"); // set in __index
-  lua_setfield(L,-2,"__index"); // set __index table in metatable
-  lua_pushvalue(L,-2);
-  lua_pushcclosure(L,rand_tostring,1);
-  lua_setfield(L,-2,"__tostring"); // set __tostring function in metatable.
-  lua_pushliteral(L, "random");
-  lua_setfield(L, -2, "__type");
-  lua_setmetatable(L, -2);
+  state->seed = input;
+  lua_newtable(L); // metatable, index 2.
+  lua_newtable(L); // __index table, index 3
+  lua_pushvalue(L,1); // Push udata to top.
+  luaL_setfuncs(L, randClosures, 1); // __index on top.
+  lua_setfield(L,2,"__index");
+  lua_pushvalue(L,1); // Push udata to top.
+  lua_pushcclosure(L, rand_tostring, 1);
+  lua_setfield(L, 2, "__tostring");
+  lua_setmetatable(L, 1);
   return 1;
 }
 
@@ -184,10 +195,21 @@ static int rand_swap(lua_State *L) { // Swap the internal states of two RNG obje
   return 0;
 }
 
+static int rand_clone(lua_State *L) {
+  rand_verify(L,1); // Verify argument is valid RNG object.
+  lua_pushcfunction(L, rand_new);
+  lua_call(L, 0, 1); // Generate the new userdata.
+  struct xoshiro256p_state *state1 = (struct xoshiro256p_state*) lua_touserdata(L,1);
+  struct xoshiro256p_state *state2 = (struct xoshiro256p_state*) lua_touserdata(L,2);
+  *state2 = *state1; // copy over 
+  return 1;
+}
+
 
 static const luaL_Reg randlib[] = {
   {"new",    rand_new},
   {"swap",  rand_swap},
+  {"copy",  rand_clone},
   {NULL, NULL}
 };
 
