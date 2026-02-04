@@ -13,6 +13,8 @@
 #define lbitlib_c
 #define LUA_LIB
 
+#include <stdlib.h>
+
 #include "AS3/AS3.h"
 #include "lua.h"
 
@@ -131,7 +133,7 @@ static int FlashObj_gc(lua_State *L)
 
 static int FlashObj_tostring(lua_State *L)
 {
-  FlashObj obj = getObjRef(L, 1);
+  FlashObj obj = (FlashObj) getObjRef(L, 1);
   char *str = NULL;
   lua_pop(L, 1);
   inline_as3("%0 = CModule.mallocString(\"\"+__lua_objrefs[%1]);\n" : "=r"(str) : "r"(obj));
@@ -158,7 +160,7 @@ FlashObj* push_newflashref(lua_State *L)
 
   luaL_getsubtable(L, LUA_REGISTRYINDEX, "flash_refs");
   lua_pushvalue(L,-2);
-  lua_rawseti(L,-2, result); // Store a reference
+  lua_rawseti(L,-2, (FlashObj) result); // Store a reference
   lua_pop(L,1);
   //inline_nonreentrant_as3("trace(\"ref \" + %0);\n" :  : "r"(result));
   return result;
@@ -203,7 +205,7 @@ static int flash_new (lua_State *L) {
   while(i <= top) {
     switch(lua_type(L, i)) {
       case LUA_TBOOLEAN: inline_as3("args.push(%0);\n" : : "r"(lua_toboolean(L, i))); break;
-      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
+      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(lua_tonumber(L, i))); break;
       case LUA_TFUNCTION:
       {
         lua_settop(L, top+1);
@@ -263,149 +265,13 @@ static int flash_new (lua_State *L) {
   inline_as3("__lua_objrefs[__lua_objrefs[%0]] = %0;\n" : : "r"(result));
   luaL_getsubtable(L, LUA_REGISTRYINDEX, "flash_refs");
   lua_pushvalue(L,-2);
-  lua_rawseti(L,-2, result); // Store a reference
+  lua_rawseti(L,-2, (FlashObj) result); // Store a reference
   lua_pop(L,1);
   return 1;
 }
 
 
 // method calls
-
-static int flash_apply (lua_State *L) {
-  int top = lua_gettop(L);
-
-  FlashObj *funcobj = getObjRef(L, 1);
-  FlashObj *thisobj = getObjRef(L, 2);
-
-  inline_as3("var args:Array = [];\n");
-
-  int i = 3;
-  while(i <= top) {
-    switch(lua_type(L, i)) {
-      case LUA_TBOOLEAN: inline_as3("args.push(%0);\n" : : "r"(lua_toboolean(L, i))); break;
-      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
-      case LUA_TFUNCTION:
-      {
-        lua_settop(L, top+1);
-        lua_copy(L, i, top+1);
-        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        AS3_DeclareVar(luastate, int);
-        AS3_CopyScalarToVar(luastate, L);
-        inline_as3(
-        "args.push(function(...vaargs):void"
-        "{"
-        "  Lua.lua_rawgeti(luastate, %1, %0);"
-        "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    var udptr:int = Lua.push_flashref(luastate);"
-        "    __lua_objrefs[udptr] = vaargs[i];"
-        "  };"
-        "  Lua.lua_callk(luastate, vaargs.length, 0, 0, null);"
-        "});" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
-        break;
-      }
-      case LUA_TUSERDATA: inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(getObjRef(L, i))); break;
-      case LUA_TSTRING:
-      {
-        size_t l=0;
-        const char *s = luaL_checklstring(L, i, &l);
-        AS3_DeclareVar(strvar, String);
-        AS3_CopyCStringToVar(strvar, s, l);
-        inline_as3("args.push(strvar);\n");
-        break;
-      }
-      default:
-        inline_as3("trace(\"unknown: \" + %0 + \",\" + %1+ \",\" + %2);\n" :  : "r"(i), "r"(top), "r"(lua_type(L, i)));
-        return 0;
-    }
-    i++;
-  }
-  // Flush all args off the stack
-  lua_pop(L, top);
-
-  // Push the new userdata onto the stack
-  FlashObj *result = push_newflashref(L);
-
-  inline_as3("__lua_objrefs[%0] = __lua_objrefs[%1].apply(%2, args);\n"
-    : : "r"(result), "r"(funcobj), "r"(thisobj)
-  );
-  return 1;
-}
-
-static int flash_call (lua_State *L) {
-  int top = lua_gettop(L);
-
-  FlashObj *thisobj = getObjRef(L, 1);
-
-  size_t l;
-  const char *s1 = luaL_checklstring(L, 2, &l);
-  AS3_DeclareVar(funcname, String);
-  AS3_CopyCStringToVar(funcname, s1, l);
-
-  inline_as3("var args:Array = [];\n");
-
-  int i = 3;
-  while(i <= top) {
-    switch(lua_type(L, i)) {
-      case LUA_TBOOLEAN: inline_as3("args.push(%0);\n" : : "r"(lua_toboolean(L, i))); break;
-      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
-      case LUA_TFUNCTION:
-      {
-        lua_settop(L, top+1);
-        lua_copy(L, i, top+1);
-        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        lua_settop(L, top);
-        AS3_DeclareVar(luastate, int);
-        AS3_CopyScalarToVar(luastate, L);
-        inline_as3(
-        "args.push(function(...vaargs):void"
-        "{"
-        "  Lua.lua_rawgeti(luastate, %1, %0);"
-        "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    var udptr:int = Lua.push_flashref(luastate);"
-        "    __lua_objrefs[udptr] = vaargs[i];"
-        "  };"
-        "  Lua.lua_callk(luastate, vaargs.length, 0, 0, null);"
-        "});" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
-        break;
-      }
-      case LUA_TUSERDATA: inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(getObjRef(L, i))); break;
-      case LUA_TSTRING:
-      {
-        const char *s = luaL_checklstring(L, i, &l);
-        AS3_DeclareVar(strvar, String);
-        AS3_CopyCStringToVar(strvar, s, l);
-        inline_as3("args.push(strvar);\n");
-        break;
-      }
-      default:
-        inline_as3("trace(\"unknown: \" + %0 + \",\" + %1+ \",\" + %2);\n" :  : "r"(i), "r"(top), "r"(lua_type(L, i)));
-        return 0;
-    }
-    i++;
-  }
-  // Flush all args off the stack
-  lua_pop(L, top);
-
-  // Push the new userdata onto the stack
-  FlashObj *result = push_newflashref(L);
-
-  inline_as3(
-    "switch(args.length) { \n"
-    "  case 0: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](); break;\n"
-    "  case 1: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](args[0]); break;\n"
-    "  case 2: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](args[0], args[1]); break;\n"
-    "  case 3: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](args[0], args[1], args[2]); break;\n"
-    "  case 4: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](args[0], args[1], args[2], args[3]); break;\n"
-    "  case 5: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](args[0], args[1], args[2], args[3], args[4]); break;\n" 
-    "  case 6: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](args[0], args[1], args[2], args[3], args[4], args[5]); break;\n"
-    "  case 7: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](args[0], args[1], args[2], args[3], args[4], args[5], args[6]); break;\n"
-    "  case 8: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]); break;\n"
-    "  case 9: __lua_objrefs[%0] = __lua_objrefs[%1][funcname](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]); break;\n"
-    "};\n"
-    : : "r"(result), "r"(thisobj)
-  );
-  return 1;
-}
 
 static int flash_closure_apply (lua_State *L) {
   int top = lua_gettop(L);
@@ -421,7 +287,7 @@ static int flash_closure_apply (lua_State *L) {
     switch(lua_type(L, i)) {
       case LUA_TNIL: inline_as3("args.push(null);\n" : : ); break;
       case LUA_TBOOLEAN: inline_as3("args.push(Boolean(%0));\n" : : "r"(lua_toboolean(L, i))); break;
-      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
+      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(lua_tonumber(L, i))); break;
       case LUA_TFUNCTION:
       case LUA_TTABLE:
       case LUA_TTHREAD:
@@ -440,7 +306,7 @@ static int flash_closure_apply (lua_State *L) {
       case LUA_TSTRING:
       {
         size_t l=0;
-        const char *s = luaL_checklstring(L, i, &l);
+        const char *s = lua_tolstring(L, i, &l);
         AS3_DeclareVar(strvar, String);
         AS3_CopyCStringToVar(strvar, s, l);
         inline_nonreentrant_as3("args.push(strvar);\n");
@@ -605,7 +471,7 @@ static int flash_metacall (lua_State *L) {
     switch(lua_type(L, i)) {
       case LUA_TNIL: inline_as3("args.push(null);\n" : : ); break;
       case LUA_TBOOLEAN: inline_as3("args.push(%0);\n" : : "r"(lua_toboolean(L, i))); break;
-      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
+      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(lua_tonumber(L, i))); break;
       case LUA_TFUNCTION:
       case LUA_TTABLE:
       case LUA_TTHREAD:
@@ -624,7 +490,7 @@ static int flash_metacall (lua_State *L) {
       case LUA_TSTRING:
       {
         size_t l=0;
-        const char *s = luaL_checklstring(L, i, &l);
+        const char *s = lua_tolstring(L, i, &l);
         AS3_DeclareVar(strvar, String);
         AS3_CopyCStringToVar(strvar, s, l);
         inline_as3("args.push(strvar);\n");
@@ -778,126 +644,6 @@ static int flash_metacall (lua_State *L) {
       break;
   }
 
-  return 1;
-}
-
-static int flash_callstatic (lua_State *L) {
-  int top = lua_gettop(L);
-
-  size_t l;
-  const char *s1 = luaL_checklstring(L, 1, &l);
-  AS3_DeclareVar(classname, String);
-  AS3_CopyCStringToVar(classname, s1, l);
-  const char *s2 = luaL_checklstring(L, 2, &l);
-  AS3_DeclareVar(staticname, String);
-  AS3_CopyCStringToVar(staticname, s2, l);
-
-  inline_as3("import flash.utils.getDefinitionByName;\n");
-  inline_as3("var clz:Class = getDefinitionByName(classname);\n");
-  inline_as3("var args:Array = [];\n");
-
-  int i = 3;
-  while(i <= top) {
-    switch(lua_type(L, i)) {
-      case LUA_TBOOLEAN: inline_as3("args.push(%0);\n" : : "r"(lua_toboolean(L, i))); break;
-      case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(luaL_checknumber(L, i))); break;
-      case LUA_TFUNCTION:
-      {
-        lua_settop(L, top+1);
-        lua_copy(L, i, top+1);
-        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        lua_settop(L, top);
-        AS3_DeclareVar(luastate, int);
-        AS3_CopyScalarToVar(luastate, L);
-        inline_as3(
-        "args.push(function(...vaargs):void"
-        "{"
-        "  Lua.lua_rawgeti(luastate,%1, %0);"
-        "  for(var i:int = 0; i<vaargs.length;i++) {"
-        "    var udptr:int = Lua.push_flashref(luastate);"
-        "    __lua_objrefs[udptr] = vaargs[i];"
-        "  };"
-        "  Lua.lua_callk(luastate, vaargs.length, 0, 0, null);"
-        "});" : : "r"(ref), "r"(LUA_REGISTRYINDEX));
-        break;
-      }
-      case LUA_TUSERDATA: inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(luaL_checkudata(L, i, FlashObjectType))); break;
-      case LUA_TSTRING:
-      {
-        const char *s = luaL_checklstring(L, i, &l);
-        AS3_DeclareVar(strvar, String);
-        AS3_CopyCStringToVar(strvar, s, l);
-        inline_as3("args.push(strvar);\n");
-        break;
-      }
-      default:
-        inline_as3("trace(\"unknown: \" + %0 + \",\" + %1+ \",\" + %2);\n" :  : "r"(i), "r"(top), "r"(lua_type(L, i)));
-        return 0;
-    }
-    i++;
-  }
-  
-  // Flush all args off the stack
-  lua_pop(L, top);
-
-  // Push the new userdata onto the stack
-  FlashObj *result = push_newflashref(L);
-
-  inline_as3("__lua_objrefs[%0] = clz[staticname].apply(null, args);\n" : : "r"(result));
-  return 1;
-}
-
-static int flash_hasprop(lua_State *L) {
-  FlashObj o1 = getObjRef(L, 1);
-  size_t l;
-  const char *s = luaL_checklstring(L, 2, &l);
-  AS3_DeclareVar(propname, String);
-  AS3_CopyCStringToVar(propname, s, l);
-  int result = 0;
-  lua_pop(L, 2);
-  inline_as3("%0 = int(__lua_objrefs[%1].hasOwnProperty(propname));\n" : "=r"(result) : "r"(o1));
-  lua_pushboolean(L, result);
-  return 1;
-}
-
-static int flash_tolua(lua_State *L) { // deprecated? idk man.
-  FlashObj *obj = getObjRef(L, 1);
-  AS3_DeclareVar(o, Object);
-  int type = 0;
-  inline_as3(
-  "o = __lua_objrefs[%1];"
-  "if (o is Number) {%0 = 1;}"
-  "else if (o is Boolean) {%0 = 2;}"
-  "else if (o is String) {%0 = 3;}"
-  "else if (o == null || o == undefined) {%0 = 4;}"
-  "else {%0 = 0;}" : "=r"(type) : "r"(obj));
-  if (type != 0) {lua_pop(L, 1);};
-  switch (type) {
-    case 1: // Is number
-      ;
-      lua_Number num = 0.0;
-      inline_as3("%0 = o;\n" : "=r"(num) : );
-      lua_pushnumber(L, num);
-      break;
-    case 2: // Is bool
-      ;
-      int bool_ = 0;
-      inline_as3("%0 = int(o);\n" : "=r"(bool_) : );
-      lua_pushboolean(L, bool_);
-      break;
-    case 3: // Is string
-      ;
-      char *str = NULL;
-      inline_as3("%0 = CModule.mallocString(\"\"+ o as String);\n" : "=r"(str) : );
-      lua_pushfstring(L, "%s", str);
-      free(str);
-      break;
-    case 4: // Is null.
-      lua_pushnil(L);
-      break;
-    case 0: // Cannot convert, just do nothing and the flashref will be returned?
-      break;
-  }
   return 1;
 }
 
@@ -1297,15 +1043,14 @@ static const luaL_Reg flashlib[] = {
   {"getidxint", flash_getidxint},
   {"getidxuint", flash_getidxuint},
   {"getidxnumber", flash_getidxnumber},
+  {"callstatic", flash_callstatic},
+  {"hasprop", flash_hasprop},
+  {"tolua", flash_tolua},
   */
 
   {"new", flash_new},
-  {"call", flash_call},
-  {"callstatic", flash_callstatic},
-  {"hasprop", flash_hasprop},
   //{"safegetprop", flash_safegetprop},
   //{"safesetprop", flash_safesetprop},
-  {"tolua", flash_tolua},
   {"toarray", flash_toarray},
   {"toobject", flash_toobject},
   {"type", flash_type},
