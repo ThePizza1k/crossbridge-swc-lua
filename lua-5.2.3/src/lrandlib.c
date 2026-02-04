@@ -61,12 +61,15 @@ void xoshiro256p_seed(struct xoshiro256p_state *state, uint64_t seed) {
   s[3] = splitmix64(&smstate);
 }
 
+typedef union {double d; uint64_t u64;} uint64_double; // For reinterpreting values between uint64_t and double.
+
 // rng object closures
 
 static int rand_advance(lua_State *L) { // Accessed as closure.
   struct xoshiro256p_state *state = (struct xoshiro256p_state*) lua_touserdata(L,lua_upvalueindex(1));
-  uint64_t result = ((xoshiro256p_next(state)>>12) | 0x3ff0000000000000ULL); // todo: figure out better way to do this
-  double r = *((double*)&result) - 1.0;
+  uint64_double result;
+  result.u64 = ((xoshiro256p_next(state)>>12) | 0x3ff0000000000000ULL);
+  double r = result.d - 1.0;
   // below copied from math.random...
   switch (lua_gettop(L)) {  /* check number of arguments */
     case 0: {  /* no arguments */
@@ -93,23 +96,20 @@ static int rand_advance(lua_State *L) { // Accessed as closure.
 
 static int rand_seed(lua_State *L) { // Accessed as closure.
   int argc = lua_gettop(L);
-  uint64_t seed = 0ULL;
-  double input;
+  uint64_double seed;
   switch(argc){
     case 0:
-      inline_as3("%0 = Math.random();" : "=r"(input) : );
-      seed = *((uint64_t*)&input);
+      inline_as3("%0 = Math.random();" : "=r"(seed.d) : );
       break;
     case 1:
-      input = luaL_checknumber(L,1);
-      seed = *((uint64_t*)&input);
+      seed.d = luaL_checknumber(L,1);
       break;
     default:
       return luaL_error(L, "wrong number of arguments (expected 0 or 1, got %d)", argc);
   }
   struct xoshiro256p_state *state = (struct xoshiro256p_state*) lua_touserdata(L,lua_upvalueindex(1));
-  xoshiro256p_seed(state, seed);
-  state->seed = input;
+  xoshiro256p_seed(state, seed.u64);
+  state->seed = seed.d;
   return 0;
 }
 
@@ -151,24 +151,21 @@ static void rand_verify(lua_State *L, int index) {  // Throw an error if not a v
 
 static int rand_new(lua_State *L) {
   int argc = lua_gettop(L);
-  uint64_t seed = 0ULL;
-  double input;
+  uint64_double seed;
   switch(argc){
     case 0:
-      inline_as3("%0 = Math.random();" : "=r"(input) : );
-      seed = *((uint64_t*)&input);
+      inline_as3("%0 = Math.random();" : "=r"(seed.d) : );
       break;
     case 1:
-      input = luaL_checknumber(L,1);
-      seed = *((uint64_t*)&input);
+      seed.d = luaL_checknumber(L,1);
       break;
     default:
       return luaL_error(L, "wrong number of arguments (expected 0 or 1, got %d)", argc);
   }
   lua_settop(L,0);
   struct xoshiro256p_state *state = (struct xoshiro256p_state*) lua_newuserdata(L,sizeof(struct xoshiro256p_state)); // index 1
-  xoshiro256p_seed(state, seed);
-  state->seed = input;
+  xoshiro256p_seed(state, seed.u64);
+  state->seed = seed.d;
   lua_newtable(L); // metatable, index 2.
   lua_newtable(L); // __index table, index 3
   lua_pushvalue(L,1); // Push udata to top.
@@ -177,6 +174,8 @@ static int rand_new(lua_State *L) {
   lua_pushvalue(L,1); // Push udata to top.
   lua_pushcclosure(L, rand_tostring, 1);
   lua_setfield(L, 2, "__tostring");
+  lua_pushliteral(L, "random");
+  lua_setfield(L, 2, "__type");
   lua_setmetatable(L, 1);
   return 1;
 }
