@@ -26,11 +26,9 @@
 //                    Flash Object Interop
 // ===============================================================
 
-static int flash_getprop (lua_State *L);
 static int flash_safegetprop (lua_State *L);
 static int flash_safesetprop (lua_State *L);
 static int flash_metacall (lua_State *L);
-static int flash_apply (lua_State *L);
 
 
 package_as3(
@@ -148,7 +146,8 @@ static const luaL_Reg FlashObj_meta[] = {
   {"__index",     flash_safegetprop},
   {"__newindex",  flash_safesetprop},
   {"__call",    flash_metacall},
-  {0, 0}
+  
+  {NULL, NULL}
 };
 
 FlashObj* push_newflashref(lua_State *L)
@@ -823,7 +822,7 @@ static const int TOARRAY_MAX_DEPTH = 32; // stop recursion...
 
 static int flash_toarray (lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
-  size_t len = lua_rawlen(L,1); // Table length.
+  int len = lua_rawlen(L,1); // Table length.
   inline_as3("var arr:Array = new Array(%0);\n" : : "r"(len));
   size_t l = 0; // string length
   int i;
@@ -945,7 +944,7 @@ static int flash_toobject (lua_State *L) {
 }
 
 static int flash_type (lua_State *L) {
-  FlashObj obj = getObjRef(L, 1);
+  FlashObj obj = (FlashObj) getObjRef(L, 1);
   char *str = NULL;
   inline_as3("import flash.utils.getQualifiedClassName;\n");
   inline_as3("%0 = CModule.mallocString(getQualifiedClassName(__lua_objrefs[%1]));\n" : "=r"(str) : "r"(obj));
