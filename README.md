@@ -16,7 +16,9 @@ Modified version of crossbridge lua to better support running user code for Plat
 
 Check the Example(s) located at: src/main/actionscript
 
-You can also see the documentation on LuaState, LuaReference, and LuaEnums for use.
+You can also see the documentation on LuaState, LuaReference, and LuaEnums for use of the library from AS3.
+
+Documentation relevant for Lua code is in REFERENCE.md
 
 ## Running the UnitTests
 
