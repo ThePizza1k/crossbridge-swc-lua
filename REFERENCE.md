@@ -84,9 +84,11 @@ In this section, `RNG` is used as a standin for any arbitrary RNG object.
 
 ### RNG.randomseed(seed : number?) : none
   - Seeds the RNG object, using the same semantics as `random.new`
+  - This function is implemented as a closure.
 
 ### RNG.getseed() : number
   - Returns the last seed used to seed the RNG object.
+  - This function is implemented as a closure.
 
 ### RNG objects
   - `tostring(RNG)` returns `"(RNG : {ptr})"`
