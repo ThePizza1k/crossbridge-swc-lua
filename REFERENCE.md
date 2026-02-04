@@ -51,9 +51,44 @@ The flash library provides some tools for interop with AS3. Be aware that some o
   - The returned class bypasses the registerConversion system.
   - This function is not safe for user code.
 
+### AS3 objects in Lua code.
+  - `tostring(as3obj)` calls the AS3 `.toString()` method.
+  - `type(as3obj)` returns `"flash"`.
+  - The `__index` metamethod indexes the AS3 object, and converts the returned value to a Lua value if possible.
+  - The `__newindex` metamethod attempts to set the given property. Any error that occurs is silenced.
+  - The `__call` metamethod will call the AS3 object with the given arguments, if it is a Function. Any error that occurs is thrown as a Lua error.
+
 ## Random Library
 
-stuff
+The random library allows the creation of RNG objects, which can be used to generate random numbers.
+Each RNG object has its own state, independent of all others.
+In this section, `RNG` is used as a standin for any arbitrary RNG object.
+
+### random.new(seed?)
+  - Returns a new RNG object.
+  - If a seed is provided, seeds the RNG object with the given seed. All 64 bits of the seed are used.
+  - If a seed is not provided, one is generated using AS3 `Math.random();`
+
+### random.swap(rng1, rng2)
+  - Swaps the internal states of the two RNG objects.
+
+### random.clone(rng)
+  - Returns a new RNG object with an identical state to the provided RNG object.
+
+### RNG.random(a?, b?)
+  - Equivalent to math.random(a?, b?), but the returned value is based on the RNG object's internal state.
+  - This function is implemented as a closure.
+
+### RNG.randomseed(seed?)
+  - Seeds the RNG object, using the same semantics as `random.new`
+
+### RNG.getseed()
+  - Returns the last seed used to seed the RNG object.
+
+### RNG objects
+  - `tostring(RNG)` returns `"(RNG : {ptr})"`
+  - `type(RNG)` returns `"random"`
+  - RNG objects are internally `userdata`
 
 ## Library Extensions
 
