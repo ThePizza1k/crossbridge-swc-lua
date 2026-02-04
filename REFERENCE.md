@@ -80,6 +80,7 @@ In this section, `RNG` is used as a standin for any arbitrary RNG object.
 
 ### RNG.random(a : number?, b : number?) : number
   - Equivalent to math.random(a?, b?), but the returned value is based on the RNG object's internal state.
+  - Return value is generated with 52 random bits.
   - This function is implemented as a closure.
 
 ### RNG.randomseed(seed : number?) : none
@@ -94,6 +95,7 @@ In this section, `RNG` is used as a standin for any arbitrary RNG object.
   - `tostring(RNG)` returns `"(RNG : {ptr})"`
   - `type(RNG)` returns `"random"`
   - RNG objects are internally `userdata`
+  - RNG objects currently use xoshiro256+ to generate random numbers.
 
 ## Library Extensions
 
