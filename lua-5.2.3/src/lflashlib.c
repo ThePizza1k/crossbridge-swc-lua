@@ -1438,6 +1438,9 @@ static int flash_safesetprop (lua_State *L) {
   return 0; // Sorry what the fuck are we returning?
 }
 
+static int toarray_depth = 0;
+static const int TOARRAY_MAX_DEPTH = 32; // stop recursion...
+
 static int flash_toarray (lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
   size_t len = lua_rawlen(L,1); // Table length.
@@ -1445,17 +1448,29 @@ static int flash_toarray (lua_State *L) {
   size_t l = 0; // string length
   int i;
   for (i = 0; i < len; i++){
-    lua_rawgeti(L,1,i+1);
+    lua_rawgeti(L,1,i+1); // value at 2.
     switch(lua_type(L, 2)) {
       case LUA_TBOOLEAN: inline_as3("arr[%1] = Boolean(%0);\n" : : "r"(lua_toboolean(L, 2)), "r"(i)); break;
-      case LUA_TNUMBER: inline_as3("arr[%1] = %0;\n" : : "r"(luaL_checknumber(L, 2)), "r"(i)); break;
+      case LUA_TNUMBER: inline_as3("arr[%1] = %0;\n" : : "r"(lua_tonumber(L, 2)), "r"(i)); break;
+      case LUA_TTABLE: 
+      {
+        toarray_depth++;
+        if (toarray_depth > TOARRAY_MAX_DEPTH) {
+          toarray_depth = 0;
+          luaL_error(L,"toarray: Reached maximum recursion depth.");
+        }
+        lua_pushcfunction(L, flash_toarray);
+        lua_pushvalue(L,2);
+        lua_call(L, 1, 1);
+        inline_as3("arr[%1] = __lua_objrefs[%0];\n" : : "r"((FlashObj*) lua_touserdata(L, -1)), "r"(i));
+        toarray_depth--;
+        lua_pop(L,1); // Remove userdata off stack
+        break;
+      }
       case LUA_TFUNCTION:
-      case LUA_TTABLE:
       case LUA_TTHREAD:
       {
-        lua_pushvalue(L,2);
-        int l_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        inline_as3("propVal = new LuaReference(%0,%1);\n" : : "r"(L), "r"(l_ref));
+        inline_as3("arr[%0] = null;\n" : : "r"(i));
         break;
       }
       case LUA_TUSERDATA: inline_as3("arr[%1] = __lua_objrefs[%0];\n" : : "r"(getObjRef(L, 2)), "r"(i)); break;
