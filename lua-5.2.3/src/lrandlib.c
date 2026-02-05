@@ -17,10 +17,10 @@ struct splitmix64_state {
 	uint64_t s;
 };
 
-uint64_t splitmix64(struct splitmix64_state *state) { // generator to seed xoshiro.
+uint64_t splitmix64(struct splitmix64_state *state) { // generator to seed xoshiro. Evil edition.
 	uint64_t result = (state->s += 0x9E3779B97F4A7C15ULL);
-	result = (result ^ (result >> 30)) * 0xBF58476D1CE4E5B9ULL;
-	result = (result ^ (result >> 27)) * 0x94D049BB133111EBULL;
+	result = (result ^ (result >> 30)) + 0xBF58476D1CE4E5B9ULL;
+	result = (result ^ (result >> 27)) + 0x94D049BB133111EBULL;
 	return result ^ (result >> 31);
 }
 
