@@ -17,11 +17,11 @@ struct splitmix64_state {
 	uint64_t s;
 };
 
-uint64_t splitmix64(struct splitmix64_state *state) { // generator to seed xoshiro. Evil edition.
-	uint64_t result = (state->s += 0x9E3779B97F4A7C15ULL);
-	result = (result ^ (result >> 30)) + 0xBF58476D1CE4E5B9ULL;
-	result = (result ^ (result >> 27)) + 0x94D049BB133111EBULL;
-	return result ^ (result >> 31);
+uint64_t splitmix64(struct splitmix64_state *state) { // generator to seed xoshiro.
+    uint64_t result = (state->s += 0x9E3779B97F4A7C15ULL);
+    result = (result ^ (result >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    result = (result ^ (result >> 27)) * 0x94D049BB133111EBULL;
+    return result ^ (result >> 31);
 }
 
 static inline uint64_t rotl(const uint64_t x, int k) {
@@ -59,6 +59,7 @@ void xoshiro256p_seed(struct xoshiro256p_state *state, uint64_t seed) {
   s[1] = splitmix64(&smstate);
   s[2] = splitmix64(&smstate);
   s[3] = splitmix64(&smstate);
+  //xoshiro256p_next(state); // push out first number?
 }
 
 typedef union {double d; uint64_t u64;} uint64_double; // For reinterpreting values between uint64_t and double.
