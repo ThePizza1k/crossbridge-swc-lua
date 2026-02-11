@@ -31,6 +31,8 @@ package {
 import crossbridge.lua.CModule;
 import crossbridge.lua.vfs.ISpecialFile;
 import crossbridge.lua.__lua_objrefs;
+import crossbridge.lua.LuaState;
+import crossbridge.lua.LuaReference;
 
 import flash.display.SimpleButton;
 import flash.display.Sprite;
@@ -42,7 +44,8 @@ import flash.utils.getTimer;
 
 [SWF(width="800", height="600", backgroundColor="#999999", frameRate="60")]
 public class Main extends Sprite implements ISpecialFile {
-    internal var luastate:int;
+
+    internal var luastate:LuaState;
 
     private var inbox:TextField;
 
@@ -84,81 +87,47 @@ public class Main extends Sprite implements ISpecialFile {
         result.background = true;
         result.backgroundColor = 0xFFFFFF;
         addChild(result);
-        const tf:TextFormat = new TextFormat("Arial", 12, 0x000000);
+        const tf:TextFormat = new TextFormat("Courier New", 12, 0x000000);
         result.defaultTextFormat = tf;
         return result;
     }
 
-    private function getAS3(L:int, ind:int):Object{
-      var t:int = Lua.lua_type(L,ind);
-      switch(t) {
-        case (Lua.LUA_TNIL):
-          return null;
-        case (Lua.LUA_TNUMBER):
-          return Lua.lua_tonumberx(L,ind, 0);
-        case (Lua.LUA_TBOOLEAN):
-          return Boolean(Lua.lua_toboolean(L,ind));
-        case (Lua.LUA_TSTRING):
-          return Lua.lua_tolstring(L, ind, 0);
-        case (Lua.LUA_TTABLE):
-          return new Object(); // These are not trivially convertible, so not gonna bother.
-        case (Lua.LUA_TFUNCTION):
-          Lua.lua_pushvalue(L,ind);
-          var ref:int = Lua.luaL_ref(L, Lua.LUA_REGISTRYINDEX);
-          return function(...vaargs):void
-            {
-              Lua.lua_rawgeti(L, Lua.LUA_REGISTRYINDEX, ref);
-              for(var i:int = 0; i<vaargs.length;i++) {
-                var udptr:int = Lua.push_flashref(L);
-                __lua_objrefs[udptr] = vaargs[i];
-              }
-              Lua.lua_callk(L, vaargs.length, 0, 0, null);
-            };
-        case (Lua.LUA_TUSERDATA):
-          var ptr:int = Lua.lua_touserdata(L,ind);
-          return __lua_objrefs[ptr];
-        case (Lua.LUA_TTHREAD):
-          return null; // These are not trivially convertible so not gonna bother
-        case (Lua.LUA_TLIGHTUSERDATA):
-          return Lua.lua_touserdata(L,ind); // Pointer to whatever tf it's pointing to
-        default:
-          return null; // Wtf?
-      }
-    }
-
     internal function runScript(event:Event = null):void {
-        var err:int = 0;
         outbox.text = "";
-        luastate = Lua.luaL_newstate();
-
-        Lua.luaL_openlibs(luastate);
-        err = Lua.luaL_loadstring(luastate, inbox.text);
-        if (err) {
-            Lua.lua_settop(luastate, -2);
-            Lua.lua_close(luastate);
-            output("Can't parse script: " + err);
-            return;
-        }
+        luastate = new LuaState();
+		var arr:Array;
+		try{
+			arr = luastate.loadString(inbox.text);
+		} catch(e:Error) {
+			output(e.toString());
+			return;
+		}
+		
+		if (arr[0] != 0) {
+			output("Failed to parse script: " + arr[1]);
+			return;
+		}
 
         try{
             var runtime:int = getTimer();
-            err = Lua.lua_pcallk(luastate, 0, Lua.LUA_MULTRET, 0, 0, null);
+            arr = (arr[1] as LuaReference).call();
             runtime = getTimer() - runtime;
             runtimelabel.text = "Script time: " + runtime + "ms";
-            /* + " final stack depth: " + Lua.lua_gettop(luastate) */
+            // + " final stack depth: " + Lua.lua_gettop(luastate)
   
-            if (err) {
-                output("Failed to run script: " + Lua.lua_tolstring(luastate, -1, 0));
+            if (arr[0] != 0) {
+                output("Failed to run script: " + arr[1]);
             } else {
-                var result:Object = getAS3(luastate, -1);
-                output("Script returned: " + result);
+                arr.shift();
+                output("Script returned: " + arr);
             }
         } catch(e:Error) {
-            output("Failed to run script: " + e.toString());
+            output("Script threw AS3 error!\n" + e.toString());
         }
 
-        Lua.lua_settop(luastate, -2)
-        Lua.lua_close(luastate)
+		
+		luastate.close();
+        
     }
 
     public function output(s:String):void {

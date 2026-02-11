@@ -2,13 +2,12 @@ package crossbridge.lua
 {
 	import crossbridge.lua.CModule;
 	import crossbridge.lua.__lua_objrefs;
-  import crossbridge.lua.LuaReference;
+	import crossbridge.lua.LuaReference;
 	
 	public class LuaState
 	{
-		
-		private var luaState:int;
-		
+	
+		private var luaState:int; // pointer to lua state.
 		
 		public function LuaState()
 		{
@@ -51,12 +50,12 @@ package crossbridge.lua
 					Lua.lua_rawgeti(L, -1, __lua_objrefs[obj]); // Retrieve a reference
 					Lua.lua_replace(L, -2);
 				}
-        if (obj.constructor in __lua_typerefs[L]) {
-          Lua.lua_rawgeti(L, LuaEnums.LUA_REGISTRYINDEX, t_ref);
-          Lua.lua_pushvalue(L, -2);
-          Lua.lua_pcallk(L, 1, 1, 0, 0, null);
-          Lua.lua_replace(L, -2);
-        }
+				if (obj.constructor in __lua_typerefs[L]) {
+					Lua.lua_rawgeti(L, LuaEnums.LUA_REGISTRYINDEX, t_ref);
+					Lua.lua_pushvalue(L, -2);
+					Lua.lua_pcallk(L, 1, 1, 0, 0, null);
+					Lua.lua_replace(L, -2);
+				}
 			}
 		}
 		
@@ -72,9 +71,9 @@ package crossbridge.lua
 					return Boolean(Lua.lua_toboolean(L,ind));
 				case (LuaEnums.LUA_TSTRING):
 					return Lua.lua_tolstring(L, ind, 0);
-        case (LuaEnums.LUA_TTHREAD):
+				case (LuaEnums.LUA_TTHREAD):
 				case (LuaEnums.LUA_TTABLE):
-        case (LuaEnums.LUA_TFUNCTION):
+				case (LuaEnums.LUA_TFUNCTION):
 					if (ind < 0) {ind = Lua.lua_gettop(L) + ind + 1;}
 					Lua.lua_pushvalue(L,ind);
 					var ref:int = Lua.luaL_ref(L, LuaEnums.LUA_REGISTRYINDEX);
@@ -147,7 +146,7 @@ package crossbridge.lua
 			}
 		}
 		
-		public function doString(chunk:String) : void // Use for untrusted code (i.e, to set up an environment or something)
+		public function doString(chunk:String) : void // only use for trusted code (i.e, to set up an environment or something)
 		{
 			checkNull();
 			var errCode:int = 0;
@@ -155,23 +154,44 @@ package crossbridge.lua
 			if (errCode != 0) {
 				var str:String = getAS3(this.luaState,-1);
 				Lua.lua_pop(this.luaState, 1);
-				throw new Error("Lua error (doString, load):" + str);
+				throw new Error("Lua error (doString, load): " + str);
 			}
 			errCode = Lua.lua_pcallk(this.luaState, 0, 0, 0, 0, null);
 			if (errCode != 0) {
 				var str:String = getAS3(this.luaState,-1);
 				Lua.lua_pop(this.luaState, 1);
-				throw new Error("Lua error (doString, call):" + str);
+				throw new Error("Lua error (doString, call): " + str);
 			}
 		}
 		
-    public function newTable(narr:int = 0, nrec:int = 0) : LuaReference
-    {
-      Lua.lua_createtable(this.luaState, narr, nrec);
-      var ref:int = Lua.luaL_ref(this.luaState, LuaEnums.LUA_REGISTRYINDEX);
-      return new LuaReference(this.luaState, ref);
-    }
-
+		public function loadString(chunk:String) : Array // load trusted string as function.
+		{
+			checkNull();
+			var errCode:int = Lua.luaL_loadstring(this.luaState, chunk);
+			if (errCode != 0) {
+				var str:String = getAS3(this.luaState,-1);
+				Lua.lua_pop(this.luaState, 1);
+				return [errCode,str];
+			}
+			var ref:int = Lua.luaL_ref(this.luaState, LuaEnums.LUA_REGISTRYINDEX);
+			return [errCode, new LuaReference(this.luaState, ref)];
+		}
+		
+		public function newTable(narr:int = 0, nrec:int = 0) : LuaReference
+		{
+			checkNull();
+			Lua.lua_createtable(this.luaState, narr, nrec);
+			var ref:int = Lua.luaL_ref(this.luaState, LuaEnums.LUA_REGISTRYINDEX);
+			return new LuaReference(this.luaState, ref);
+		}
+		
+		public function tableFromPairs(pairs:Vector.<Array>) : LuaReference
+		{
+			checkNull();
+			var ref:LuaReference = this.newTable(); // Can estimate size to maybe optimize this but idgaf.
+			ref.setFields(pairs);
+			return ref;
+		}
 
 	}
 	
