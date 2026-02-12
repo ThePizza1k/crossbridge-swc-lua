@@ -326,6 +326,11 @@ static int flash_closure_apply (lua_State *L) {
   inline_as3(
     "try{\n"
     "  result = __lua_objrefs[%1].apply(__lua_objrefs[%2], args);\n"
+    "} catch(l: LongJmp) {\n"
+    "  for (var i:int = 0; i < refs.length; i++){\n" // Decrement reference count for any LuaReferences
+    "    refs[i].decRef();"
+    "  }\n"
+    "  throw l;\n" // pass along Lua error
     "} catch(e : Error) {\n"
     "  %0 = 1;\n"
     "  result = e.message;\n"
@@ -523,6 +528,11 @@ static int flash_metacall (lua_State *L) {
     "    case 9: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]); break;\n"
     "    default: result = __lua_objrefs[%1].apply(__lua_objrefs[%1],args); break;\n"
     "  };\n"
+    "} catch(l: LongJmp) {\n"
+    "  for (var i:int = 0; i < refs.length; i++){\n" // Decrement reference count for any LuaReferences
+    "    refs[i].decRef();"
+    "  }\n"
+    "  throw l;\n" // pass along Lua error
     "} catch(e : Error) {\n"
     "  %0 = 1;\n"
     "  result = e.message;\n"
@@ -809,6 +819,9 @@ static int flash_safesetprop (lua_State *L) {
   inline_as3(
     "try{\n"
     "  __lua_objrefs[%0][propname] = propVal;\n"
+    "} catch (l:LongJmp) {\n"
+    "  if (propVal is LuaReference) {(propVal as LuaReference).decRef();}"
+    "  throw l;" // pass along error.
     "} catch (e:Error) {}\n" // Silence error.
     "if (propVal is LuaReference) {(propVal as LuaReference).decRef();}" // Decrement reference count.
     : 
