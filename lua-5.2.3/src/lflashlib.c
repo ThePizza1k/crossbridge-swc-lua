@@ -388,13 +388,13 @@ static int flash_closure_apply (lua_State *L) {
     case 6:
       ; // right.
       int refNum = LUA_NOREF;
-      inline_as3("%0 = (o2 as LuaReference).ref;\n" : "=r"(refNum) : );
+      inline_as3("%0 = (result as LuaReference).ref;\n" : "=r"(refNum) : );
       if (refNum == LUA_NOREF) {
         return luaL_error(L,"Received freed LuaReference"); // This should never be the case.
       } else {
         lua_rawgeti(L,LUA_REGISTRYINDEX,refNum);
       }
-      inline_as3("(o2 as LuaReference).decRef();");
+      inline_as3("(result as LuaReference).decRef();");
       break;
     case 0: // Ok we'll push your god damn flash reference fine
       ;
@@ -424,8 +424,8 @@ static int flash_closure_apply (lua_State *L) {
           FlashObj *result = push_newflashref(L);
           
           // Get the prop, and store it with the new key
-          inline_as3("__lua_objrefs[%0] = o2;\n" : : "r"(result));
-          inline_as3("__lua_objrefs[o2] = %0;\n" : : "r"(result));
+          inline_as3("__lua_objrefs[%0] = result;\n" : : "r"(result));
+          inline_as3("__lua_objrefs[result] = %0;\n" : : "r"(result));
         }
       }
 
@@ -583,13 +583,13 @@ static int flash_metacall (lua_State *L) {
     case 6:
       ; // right.
       int refNum = LUA_NOREF;
-      inline_as3("%0 = (o2 as LuaReference).ref;\n" : "=r"(refNum) : );
+      inline_as3("%0 = (result as LuaReference).ref;\n" : "=r"(refNum) : );
       if (refNum == LUA_NOREF) {
         return luaL_error(L,"Received freed LuaReference"); // This should never be the case.
       } else {
         lua_rawgeti(L,LUA_REGISTRYINDEX,refNum);
       }
-      inline_as3("(o2 as LuaReference).decRef();");
+      inline_as3("(result as LuaReference).decRef();");
       break;
     case 0: // Ok we'll push your god damn flash reference fine
       ;
@@ -619,8 +619,8 @@ static int flash_metacall (lua_State *L) {
           FlashObj *result = push_newflashref(L);
           
           // Get the prop, and store it with the new key
-          inline_as3("__lua_objrefs[%0] = o2;\n" : : "r"(result));
-          inline_as3("__lua_objrefs[o2] = %0;\n" : : "r"(result));
+          inline_as3("__lua_objrefs[%0] = result;\n" : : "r"(result));
+          inline_as3("__lua_objrefs[result] = %0;\n" : : "r"(result));
         }
       }
 

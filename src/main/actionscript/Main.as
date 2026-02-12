@@ -28,187 +28,190 @@
  *
  */
 package {
-import crossbridge.lua.CModule;
-import crossbridge.lua.vfs.ISpecialFile;
-import crossbridge.lua.__lua_objrefs;
-import crossbridge.lua.LuaState;
-import crossbridge.lua.LuaReference;
+	import crossbridge.lua.CModule;
+	import crossbridge.lua.vfs.ISpecialFile;
+	import crossbridge.lua.__lua_objrefs;
+	import crossbridge.lua.LuaState;
+	import crossbridge.lua.LuaReference;
 
-import flash.display.SimpleButton;
-import flash.display.Sprite;
-import flash.events.Event;
-import flash.text.TextField;
-import flash.text.TextFieldType;
-import flash.text.TextFormat;
-import flash.utils.getTimer;
-import flash.utils.ByteArray;
+	import flash.display.SimpleButton;
+	import flash.display.Sprite;
+	import flash.events.Event;
+	import flash.text.TextField;
+	import flash.text.TextFieldType;
+	import flash.text.TextFormat;
+	import flash.utils.getTimer;
+	import flash.utils.ByteArray;
 
 [SWF(width="800", height="600", backgroundColor="#999999", frameRate="60")]
-public class Main extends Sprite implements ISpecialFile {
+	public class Main extends Sprite implements ISpecialFile {
 
-    internal var luastate:LuaState;
+		internal var luastate:LuaState;
 
-    private var inbox:TextField;
+		private var inbox:TextField;
 
-    private var outbox:TextField;
+		private var outbox:TextField;
 
-    private var runtimelabel:TextField;
+		private var runtimelabel:TextField;
 
-    public function Main() {
-        addEventListener(Event.ADDED_TO_STAGE, appInit);
-    }
+		public function Main() {
+			addEventListener(Event.ADDED_TO_STAGE, appInit);
+		}
 
-    internal function appInit(event:Event):void {
-        removeEventListener(Event.ADDED_TO_STAGE, appInit);
+		internal function appInit(event:Event):void {
+			removeEventListener(Event.ADDED_TO_STAGE, appInit);
 
-        runtimelabel = getTextField(5, 5, 790, 20);
-        inbox = getTextField(5, 30, 790, 275);
-        outbox = getTextField(5, 310, 790, 275);
+			runtimelabel = getTextField(5, 5, 790, 20);
+			inbox = getTextField(5, 30, 790, 275);
+			outbox = getTextField(5, 310, 790, 275);
 
-        inbox.text = "-- paste your LUA code here ...";
-        inbox.type = TextFieldType.INPUT;
-        inbox.addEventListener(Event.CHANGE, runScript);
+			inbox.text = "-- paste your LUA code here ...";
+			inbox.type = TextFieldType.INPUT;
+			inbox.addEventListener(Event.CHANGE, runScript);
 
-        CModule.rootSprite = this;
-        CModule.vfs.console = this;
-        CModule.startAsync(this);
+			CModule.rootSprite = this;
+			CModule.vfs.console = this;
+			CModule.startAsync(this);
 
-        runScript();
-    }
+			runScript();
+		}
 
-    private function getTextField(x:int, y:int, w:int, h:int):TextField {
-        var result:TextField = new TextField();
-        result.width = w;
-        result.height = h;
-        result.x = x;
-        result.y = y;
-        result.multiline = true;
-        result.selectable = true;
-        result.wordWrap = true;
-        result.background = true;
-        result.backgroundColor = 0xFFFFFF;
-        addChild(result);
-        const tf:TextFormat = new TextFormat("Courier New", 12, 0x000000);
-        result.defaultTextFormat = tf;
-        return result;
-    }
+		private function getTextField(x:int, y:int, w:int, h:int):TextField {
+				var result:TextField = new TextField();
+				result.width = w;
+				result.height = h;
+				result.x = x;
+				result.y = y;
+				result.multiline = true;
+				result.selectable = true;
+				result.wordWrap = true;
+				result.background = true;
+				result.backgroundColor = 0xFFFFFF;
+				addChild(result);
+				const tf:TextFormat = new TextFormat("Courier New", 12, 0x000000);
+				result.defaultTextFormat = tf;
+				return result;
+		}
 	
-	private static function getOutputFromArray(arr:Array):String {
-		var strArr:Array = new Array();
-		var len:int = 0;
-		for (var i:int = 0; i < arr.length; i++) {
-			var str:String = null;
-			if (arr[i] == null) {
-				str = "nil";
-			} else if (arr[i] is String) {
-				str = "\"" + arr[i] + "\"";
-			} else {
-				str = arr[i].toString();
+		private static function getOutputFromArray(arr:Array):String {
+			var strArr:Array = new Array();
+			var len:int = 0;
+			for (var i:int = 0; i < arr.length; i++) {
+				var str:String = null;
+				if (arr[i] == null) {
+					str = "nil";
+				} else if (arr[i] is String) {
+					str = "\"" + arr[i] + "\"";
+				} else {
+					str = arr[i].toString();
+				}
+				if (i+1 == arr.length) {
+					strArr[i] = str
+				} else {
+					strArr[i] = str + ", "
+				}
+				len += strArr[i].length;
 			}
-			if (i+1 == arr.length) {
-				strArr[i] = str
-			} else {
-				strArr[i] = str + ", "
+			var buff:ByteArray = new ByteArray();
+			buff.length = len;
+			for (i = 0; i < strArr.length; i++){
+				buff.writeUTFBytes(strArr[i]);
 			}
-			len += strArr[i].length;
+			buff.position = 0;
+			return buff.readUTFBytes(len);
 		}
-		var buff:ByteArray = new ByteArray();
-		buff.length = len;
-		for (i = 0; i < strArr.length; i++){
-			buff.writeUTFBytes(strArr[i]);
-		}
-		buff.position = 0;
-		return buff.readUTFBytes(len);
-	}
 
     internal function runScript(event:Event = null):void {
-        outbox.text = "";
-        luastate = new LuaState();
-		var arr:Array;
-		try{
-			arr = luastate.loadString(inbox.text);
-		} catch(e:Error) {
-			output(e.toString());
-			return;
-		}
-		
-		if (arr[0] != 0) {
-			output("Failed to parse script: " + arr[1]);
-			return;
-		}
+			outbox.text = "";
+			luastate = new LuaState();
+			luastate.setGlobal("AS3Test", Test);
 
-        try{
-            var runtime:int = getTimer();
-            arr = (arr[1] as LuaReference).call();
-            runtime = getTimer() - runtime;
-            runtimelabel.text = "Script time: " + runtime + "ms";
-  
-            if (arr[0] != 0) {
-                output("Failed to run script: " + arr[1]);
-            } else {
-                arr.shift();
-				if (arr.length > 1) {
-					output("Script returned " + arr.length + " values: " + getOutputFromArray(arr) + ".");
-				} else if (arr.length == 1) {
-					output("Script returned " + getOutputFromArray(arr) + ".");
+			var arr:Array;
+			try{
+				arr = luastate.loadString(inbox.text);
+			} catch(e:Error) {
+				output(e.toString());
+				luastate.close();
+				return;
+			}
+			
+			if (arr[0] != 0) {
+				output("Failed to parse script: " + arr[1]);
+				luastate.close();
+				return;
+			}
+
+			try{
+				var runtime:int = getTimer();
+				arr = (arr[1] as LuaReference).call();
+				runtime = getTimer() - runtime;
+				runtimelabel.text = "Script time: " + runtime + "ms";
+
+				if (arr[0] != 0) {
+					output("Failed to run script: " + arr[1]);
 				} else {
-					output("Script finished.");
+					arr.shift();
+					if (arr.length > 1) {
+							output("Script returned " + arr.length + " values: " + getOutputFromArray(arr) + ".");
+						} else if (arr.length == 1) {
+							output("Script returned " + getOutputFromArray(arr) + ".");
+						} else {
+							output("Script finished.");
+						}
 				}
-            }
-        } catch(e:Error) {
-            output("Script threw AS3 error!\n" + e.toString() + "\n" + e.getStackTrace());
-        }
+			} catch(e:Error) {
+				output("Script threw AS3 error!\n" + e.toString() + "\n" + e.getStackTrace());
+			}
 
-		
-		luastate.close();
-        
+			
+			luastate.close();
     }
 
-    public function output(s:String):void {
-        outbox.text += s;
-        //trace(s);
-    }
+		public function output(s:String):void {
+			outbox.text += s;
+			//trace(s);
+		}
 
-    /**
-     * The PlayerKernel implementation will use this function to handle
-     * C IO write requests to the file "/dev/tty" (e.g. output from
-     * printf will pass through this function). See the ISpecialFile
-     * documentation for more information about the arguments and return value.
-     */
-    public function write(fd:int, bufPtr:int, nbyte:int, errnoPtr:int):int {
-        var str:String = CModule.readString(bufPtr, nbyte)
-        output(str)
-        return nbyte
-    }
+		/**
+		 * The PlayerKernel implementation will use this function to handle
+		 * C IO write requests to the file "/dev/tty" (e.g. output from
+		 * printf will pass through this function). See the ISpecialFile
+		 * documentation for more information about the arguments and return value.
+		 */
+		public function write(fd:int, bufPtr:int, nbyte:int, errnoPtr:int):int {
+			var str:String = CModule.readString(bufPtr, nbyte)
+			output(str)
+			return nbyte
+		}
 
-    /**
-     * The PlayerKernel implementation will use this function to handle
-     * C IO read requests to the file "/dev/tty" (e.g. reads from stdin
-     * will expect this function to provide the data). See the ISpecialFile
-     * documentation for more information about the arguments and return value.
-     */
-    public function read(fd:int, bufPtr:int, nbyte:int, errnoPtr:int):int {
-        return 0
-    }
+		/**
+		 * The PlayerKernel implementation will use this function to handle
+		 * C IO read requests to the file "/dev/tty" (e.g. reads from stdin
+		 * will expect this function to provide the data). See the ISpecialFile
+		 * documentation for more information about the arguments and return value.
+		 */
+		public function read(fd:int, bufPtr:int, nbyte:int, errnoPtr:int):int {
+			return 0
+		}
 
-    /**
-     * The PlayerKernel implementation will use this function to handle
-     * C fcntl requests to the file "/dev/tty"
-     * See the ISpecialFile documentation for more information about the
-     * arguments and return value.
-     */
-    public function fcntl(fd:int, com:int, data:int, errnoPtr:int):int {
-        return 0
-    }
+		/**
+		 * The PlayerKernel implementation will use this function to handle
+		 * C fcntl requests to the file "/dev/tty"
+		 * See the ISpecialFile documentation for more information about the
+		 * arguments and return value.
+		 */
+		public function fcntl(fd:int, com:int, data:int, errnoPtr:int):int {
+			return 0
+		}
 
-    /**
-     * The PlayerKernel implementation will use this function to handle
-     * C ioctl requests to the file "/dev/tty"
-     * See the ISpecialFile documentation for more information about the
-     * arguments and return value.
-     */
-    public function ioctl(fd:int, com:int, data:int, errnoPtr:int):int {
-        return 0;
-    }
-}
+		/**
+		 * The PlayerKernel implementation will use this function to handle
+		 * C ioctl requests to the file "/dev/tty"
+		 * See the ISpecialFile documentation for more information about the
+		 * arguments and return value.
+		 */
+		public function ioctl(fd:int, com:int, data:int, errnoPtr:int):int {
+			return 0;
+		}
+	}
 }
