@@ -41,6 +41,7 @@ import flash.text.TextField;
 import flash.text.TextFieldType;
 import flash.text.TextFormat;
 import flash.utils.getTimer;
+import flash.utils.ByteArray;
 
 [SWF(width="800", height="600", backgroundColor="#999999", frameRate="60")]
 public class Main extends Sprite implements ISpecialFile {
@@ -91,6 +92,34 @@ public class Main extends Sprite implements ISpecialFile {
         result.defaultTextFormat = tf;
         return result;
     }
+	
+	private static function getOutputFromArray(arr:Array):String {
+		var strArr:Array = new Array();
+		var len:int = 0;
+		for (var i:int = 0; i < arr.length; i++) {
+			var str:String = null;
+			if (arr[i] == null) {
+				str = "nil";
+			} else if (arr[i] is String) {
+				str = "\"" + arr[i] + "\"";
+			} else {
+				str = arr[i].toString();
+			}
+			if (i+1 == arr.length) {
+				strArr[i] = str
+			} else {
+				strArr[i] = str + ", "
+			}
+			len += strArr[i].length;
+		}
+		var buff:ByteArray = new ByteArray();
+		buff.length = len;
+		for (i = 0; i < strArr.length; i++){
+			buff.writeUTFBytes(strArr[i]);
+		}
+		buff.position = 0;
+		return buff.readUTFBytes(len);
+	}
 
     internal function runScript(event:Event = null):void {
         outbox.text = "";
@@ -113,16 +142,21 @@ public class Main extends Sprite implements ISpecialFile {
             arr = (arr[1] as LuaReference).call();
             runtime = getTimer() - runtime;
             runtimelabel.text = "Script time: " + runtime + "ms";
-            // + " final stack depth: " + Lua.lua_gettop(luastate)
   
             if (arr[0] != 0) {
                 output("Failed to run script: " + arr[1]);
             } else {
                 arr.shift();
-                output("Script returned: " + arr);
+				if (arr.length > 1) {
+					output("Script returned " + arr.length + " values: " + getOutputFromArray(arr) + ".");
+				} else if (arr.length == 1) {
+					output("Script returned " + getOutputFromArray(arr) + ".");
+				} else {
+					output("Script finished.");
+				}
             }
         } catch(e:Error) {
-            output("Script threw AS3 error!\n" + e.toString());
+            output("Script threw AS3 error!\n" + e.toString() + "\n" + e.getStackTrace());
         }
 
 		
@@ -132,7 +166,7 @@ public class Main extends Sprite implements ISpecialFile {
 
     public function output(s:String):void {
         outbox.text += s;
-        trace(s);
+        //trace(s);
     }
 
     /**
