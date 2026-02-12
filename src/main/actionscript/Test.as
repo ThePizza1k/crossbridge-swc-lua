@@ -16,5 +16,10 @@ package{
 			return tab;
 		}
 
+		public static function setTableField(l : LuaReference, k : Object, v : Object) : void
+		{
+			l.setField(k, v);
+		}
+
 	}
 }
