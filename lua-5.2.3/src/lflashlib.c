@@ -811,11 +811,10 @@ static int flash_safesetprop (lua_State *L) {
   inline_as3(
     "try{\n"
     "  __lua_objrefs[%0][propname] = propVal;\n"
-    "} catch (l:LongJmp) {\n"
-    "  if (propVal is LuaReference) {(propVal as LuaReference).decRef();}"
-    "  throw l;" // pass along error.
-    "} catch (e:Error) {}\n" // Silence error.
-    "if (propVal is LuaReference) {(propVal as LuaReference).decRef();}" // Decrement reference count.
+		"} catch (e:Error) {\n" // Silence error.
+		"} finally {\n"
+    "  if (propVal is LuaReference) {(propVal as LuaReference).decRef();}" // Decrement reference count.
+    "}"
     : 
     : "r"(o1));
   lua_pop(L, 3);

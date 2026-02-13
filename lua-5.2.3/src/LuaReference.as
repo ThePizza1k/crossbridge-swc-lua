@@ -400,7 +400,7 @@ package crossbridge.lua{
 					Lua.lua_createtable(L, 0, 0);
 					setFieldsOnTop(key);
 				} else {
-					pushAS3(L,value);
+					pushAS3(L, key);
 				}
 				if (value is Vector.<Array>) {
 					Lua.lua_createtable(L, 0, 0);
