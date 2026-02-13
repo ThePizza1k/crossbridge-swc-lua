@@ -1001,6 +1001,16 @@ static int flash_getclass (lua_State *L){
   return 1;
 }
 
+static int flash_panic(lua_State *L) { // Replace Lua panic function with AS3 error.
+  size_t l;
+  const char *errMsg = luaL_checklstring(L, -1, &l);
+  AS3_DeclareVar(luaErr, String);
+  AS3_CopyCStringToVar(luaErr, errMsg, l);
+  lua_settop(L, 0); // set top to 0.
+  inline_as3("throw new Error(\"Lua Panic: \" + luaErr);");
+  return 0;
+}
+
 
 
 // ===============================================================
@@ -1087,6 +1097,8 @@ LUAMOD_API int luaopen_flash (lua_State *L) {
   lua_settable(L, -3);
   lua_setmetatable(L,-2);
   lua_settable(L,LUA_REGISTRYINDEX);
+  
+  lua_atpanic(L, flash_panic);
 
   inline_as3("import flash.utils.Dictionary; __lua_typerefs[%0] = new Dictionary();\n" : : "r"(L));
   return 1;

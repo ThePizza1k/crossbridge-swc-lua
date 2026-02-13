@@ -140,6 +140,7 @@ package {
 				luastate.close();
 				return;
 			}
+			
 
 			try{
 				var runtime:int = getTimer();
