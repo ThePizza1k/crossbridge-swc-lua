@@ -32,5 +32,9 @@ package{
 			l.setField(k, v);
 		}
 
+		public static function execute(f : LuaReference) : void
+		{
+			f.execute();
+		}
 	}
 }

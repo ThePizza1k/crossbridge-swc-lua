@@ -9,9 +9,9 @@ package crossbridge.lua{
 			non-flash userdata without a metamethod for conversion to AS3.
 		
 		Things to keep in mind:
-      Maintain the reference count, to ensure that lua values can be garbage collected when you are done with them.
-      Some reference counting is automatic: when Lua calls an AS3 function or setter, any LuaReference it provides starts at 1 reference, and decrements the reference count by one when done.
-      Any LuaReference returned to lua has its reference count decremented by 1 as well. (the reference passes into Lua, where it is 'destroyed')
+			Maintain the reference count, to ensure that lua values can be garbage collected when you are done with them.
+			Some reference counting is automatic: when Lua calls an AS3 function or setter, any LuaReference it provides starts at 1 reference, and decrements the reference count by one when done.
+			Any LuaReference returned to lua has its reference count decremented by 1 as well. (the reference passes into Lua, where it is 'destroyed')
 			Type checking is up to you.
 				The integers for "expected type" are in LuaEnums
 				e.g lua_ref.checkType(LuaEnums.LUA_TTABLE, 2, "awesomeMethod"); // type check a lua reference received as argument 2.
@@ -144,7 +144,7 @@ package crossbridge.lua{
 		/*
 			Returns a string with the type name of the Lua object.
 			e.g "table", or "userdata".
-			TODO: respect __type. (This will be from a change on the C side to LuaL_typename)
+			TODO: respect __type. (This will be from a change on the C side to LuaL_typename. Maybe. Idk yet.)
 		*/
 		public function typename() : String
 		{
@@ -268,6 +268,31 @@ package crossbridge.lua{
 				arr[0] = errCode;
 				return arr;
 			} else {
+				var str:String = getAS3(this.L,-1);
+				Lua.lua_pop(this.L, 1);
+				trace("Lua error: " + str);
+				return [errCode,str];
+			}
+		}
+
+		/*
+			Equivalent to ref(...) in Lua.
+			This version does not return any values except those regarding the execution of the function.
+			
+			Returns: An array, where arr[0] is the error code.
+			If there is no error, arr[0] is 0.
+			If there is an error, arr[0] is an error code, and arr[1] is the error message.
+		*/
+		public function execute(... args) : Array
+		{
+			Lua.lua_rawgeti(this.L,LuaEnums.LUA_REGISTRYINDEX,this.ref);
+			var i:int = 0;
+			for (i = 0; i < args.length; i++){
+				pushAS3(this.L,args[i]);
+			}
+			var errCode:int = Lua.lua_pcallk(this.L, args.length, 0, 0, 0, null); // lua_call is defined as a macro, so its not available to us. this is equivalent.
+			if (errCode == 0) {return [0];}
+			else {
 				var str:String = getAS3(this.L,-1);
 				Lua.lua_pop(this.L, 1);
 				trace("Lua error: " + str);
