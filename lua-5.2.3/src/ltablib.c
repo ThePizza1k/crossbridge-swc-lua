@@ -288,6 +288,26 @@ static int tfind (lua_State *L) {
   return 0; // ???
 }
 
+static int tcreate (lua_State *L) {
+	int narr = 0;
+	int nrec = 0;
+	switch(lua_gettop(L)) {
+		case 2:
+			nrec = luaL_checkint(L,2);
+			if (nrec < 0) {return luaL_argerror(L, 2, "size must be non-negative");}
+		case 1:
+			narr = luaL_checkint(L,1);
+			if (narr < 0) {return luaL_argerror(L, 1, "size must be non-negative");}
+		case 0:
+			break;
+		default:
+			return luaL_error(L, "Expected 2 or fewer arguments, got %d", lua_gettop(L));
+	}
+	lua_settop(L, 0);
+	lua_createtable(L, narr, nrec);
+	return 1;
+}
+
 static const luaL_Reg tab_funcs[] = {
   {"concat", tconcat},
 #if defined(LUA_COMPAT_MAXN)
@@ -299,6 +319,7 @@ static const luaL_Reg tab_funcs[] = {
   {"remove", tremove},
   {"sort", sort},
   {"find", tfind},
+  {"create", tcreate},
   {NULL, NULL}
 };
 

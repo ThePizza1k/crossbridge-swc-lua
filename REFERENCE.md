@@ -99,21 +99,28 @@ In this section, `RNG` is used as a standin for any arbitrary RNG object.
 
 ## Library Extensions
 
-### math.clamp(m : number, min: number, max: number): number
+### math.clamp(m : number, min : number, max : number): number
   - Returns n if min < n < max.
   - Returns min if n < min.
   - Returns max if n > max.
   - Errors if min > max.
   - If n is NaN, returns NaN.
 
-### math.sign(m: number): number
+### math.sign(m : number): number
   - Returns -1 if n is negative, 1 if n is positive, or 0 if n is zero or NaN.
 
-### math.round(m: number): number
+### math.round(m : number): number
   - Rounds m to nearest integer.
   - If m is halfway between 2 integers, rounds away from 0.
 
-### table.find(t: table, v: any, n: number?) : number?
+### table.find(t : table, v : any, n : number?) : number?
   - Returns the index of first element in t equal to v.
   - If not found, returns nil.
   - Starts search at n if specified, or at 1 otherwise. Stops at first nil.
+
+### table.create(narr : number? = 0, nrec : number? = 0) : table
+  - Creates an empty table.
+  - narr is a hint for how many elements the table will have as a sequence.
+  - nrec is a hint for how many other elements the table will have.
+  - Lua may use these hints to preallocate space for the table, providing a performance boost in some situations.
+  - Errors if narr or nrec are negative, or if memory allocation fails.
