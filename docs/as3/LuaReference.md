@@ -28,7 +28,7 @@ Type checking is up to the user.
 
 ### luaReference.typename() : String
   - Returns a string with the type name of the Lua object.
-	- e.g `"table"`, or `"userdata"`.
+  - e.g `"table"`, or `"userdata"`.
   - This does not respect `__type` currently. This can be worked around by checking the metatable for now.
 
 todo: document everything else
