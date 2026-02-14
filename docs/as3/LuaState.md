@@ -51,4 +51,4 @@ LuaState objects are referred to as luaState.
 ### luaState.tableFromPairs(pairs:Vector.<Array>) : LuaReference
   - Creates a new table, filling it from a Vector.<Array> that describes each pair.
   - Each entry of the vector is an array of size 2, where entry 0 is the key and entry 1 is the value.
-  - e.g Vector.<Array> pairs = new <Array>[["key", "value"], ["key2", "value2"], [true, false]]
+  - e.g Vector.<Array> pairs = new \<Array>[["key", "value"], ["key2", "value2"], [true, false]]
