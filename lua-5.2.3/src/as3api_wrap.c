@@ -5735,6 +5735,41 @@ void _wrap_luaopen_rand() {
 }
 
 
+__attribute__((annotate("as3sig:public function _wrap_LUA_BUFLIBNAME():String")))
+void _wrap_LUA_BUFLIBNAME() {
+  char *result ;
+  
+  result = "buffer";
+  {
+    int len = strlen(result);
+    AS3_DeclareVar(asresult, String);
+    AS3_CopyCStringToVar(asresult, result, len);
+  }
+  {
+    AS3_ReturnAS3Var(asresult);
+  }
+}
+
+
+__attribute__((annotate("as3sig:public function _wrap_luaopen_buf(L:int):int")))
+void _wrap_luaopen_buf() {
+  lua_State *arg1 = (lua_State *) 0 ;
+  int result ;
+  
+  {
+    AS3_GetScalarFromVar(arg1, L);
+  }
+  result = (int)luaopen_buf(arg1);
+  {
+    AS3_DeclareVar(asresult, int);
+    AS3_CopyScalarToVar(asresult, result);
+  }
+  {
+    AS3_ReturnAS3Var(asresult);
+  }
+}
+
+
 __attribute__((annotate("as3sig:public function _wrap_luaL_openlibs(L:int):void")))
 void _wrap_luaL_openlibs() {
   lua_State *arg1 = (lua_State *) 0 ;

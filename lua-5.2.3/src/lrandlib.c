@@ -168,7 +168,7 @@ static int rand_new(lua_State *L) {
   xoshiro256p_seed(state, seed.u64);
   state->seed = seed.d;
   lua_newtable(L); // metatable, index 2.
-  lua_newtable(L); // __index table, index 3
+  luaL_newlibtable(L, randClosures); // __index table, index 3
   lua_pushvalue(L,1); // Push udata to top.
   luaL_setfuncs(L, randClosures, 1); // __index on top.
   lua_setfield(L,2,"__index");

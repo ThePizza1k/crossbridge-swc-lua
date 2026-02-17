@@ -2,6 +2,8 @@ package{
 	import crossbridge.lua.CModule;
 	import crossbridge.lua.LuaState;
 	import crossbridge.lua.LuaReference;
+	import flash.media.Sound;
+	import flash.utils.ByteArray;
 
 	public class Test {
 
@@ -36,5 +38,20 @@ package{
 		{
 			f.execute();
 		}
+
+		public static function playArrayAsSound(arr : Array) : void
+		{
+			if (arr.length < 1) {throw new ArgumentError("Array must have stuff in it");}
+			var byteArr : ByteArray = new ByteArray();
+			byteArr.length = arr.length * 4;
+			for (var i : int = 0; i < arr.length; i++){
+				byteArr.writeFloat(arr[i]);
+			}
+			byteArr.position = 0;
+			var sound:Sound = new Sound();
+			sound.loadPCMFromByteArray(byteArr, arr.length, "float", false, 44100.0);
+			sound.play();
+		}
+
 	}
 }

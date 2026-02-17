@@ -262,10 +262,6 @@ static int flash_new (lua_State *L) {
     : : "r"(result)
   );
   inline_as3("__lua_objrefs[__lua_objrefs[%0]] = %0;\n" : : "r"(result));
-  luaL_getsubtable(L, LUA_REGISTRYINDEX, "flash_refs");
-  lua_pushvalue(L,-2);
-  lua_rawseti(L,-2, (FlashObj) result); // Store a reference
-  lua_pop(L,1);
   return 1;
 }
 
@@ -325,7 +321,19 @@ static int flash_closure_apply (lua_State *L) {
 
   inline_as3(
     "try{\n"
-    "  result = __lua_objrefs[%1].apply(__lua_objrefs[%2], args);\n"
+    "  switch(args.length) { \n"
+    "    case 0: result = __lua_objrefs[%1](); break;\n"
+    "    case 1: result = __lua_objrefs[%1](args[0]); break;\n"
+    "    case 2: result = __lua_objrefs[%1](args[0], args[1]); break;\n"
+    "    case 3: result = __lua_objrefs[%1](args[0], args[1], args[2]); break;\n"
+    "    case 4: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3]); break;\n"
+    "    case 5: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4]); break;\n" 
+    "    case 6: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5]); break;\n"
+    "    case 7: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6]); break;\n"
+    "    case 8: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]); break;\n"
+    "    case 9: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]); break;\n"
+    "    default: result = __lua_objrefs[%1].apply(__lua_objrefs[%2],args); break;\n"
+    "  };\n"
     "} catch(e : Error) {\n"
     "  %0 = 1;\n"
     "  result = e.message;\n"

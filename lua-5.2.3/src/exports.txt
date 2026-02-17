@@ -5,6 +5,7 @@ _wrap_LUAI_MAXSHORTLEN
 _wrap_LUAI_MAXSTACK
 _wrap_LUA_AUTHORS
 _wrap_LUA_BITLIBNAME
+_wrap_LUA_BUFLIBNAME
 _wrap_LUA_COLIBNAME
 _wrap_LUA_COPYRIGHT
 _wrap_LUA_DBLIBNAME
@@ -247,6 +248,7 @@ _wrap_lua_yieldk
 _wrap_lua_yieldk_k_func_ptr
 _wrap_luaopen_base
 _wrap_luaopen_bit32
+_wrap_luaopen_buf
 _wrap_luaopen_coroutine
 _wrap_luaopen_debug
 _wrap_luaopen_flash
@@ -403,6 +405,7 @@ lua_xmove
 lua_yieldk
 luaopen_base
 luaopen_bit32
+luaopen_buf
 luaopen_coroutine
 luaopen_debug
 luaopen_flash

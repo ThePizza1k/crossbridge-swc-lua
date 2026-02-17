@@ -49,6 +49,9 @@ LUAMOD_API int (luaopen_flash) (lua_State *L);
 #define LUA_RANDLIBNAME	"random"
 LUAMOD_API int (luaopen_rand) (lua_State *L);
 
+#define LUA_BUFLIBNAME "buffer"
+LUAMOD_API int (luaopen_buf) (lua_State *L);
+
 /* open all previous libraries */
 LUALIB_API void (luaL_openlibs) (lua_State *L);
 
