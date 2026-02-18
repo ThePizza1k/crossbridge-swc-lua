@@ -15,9 +15,6 @@
 
 #define BUFFER_SIZE_CAP 16777216
 
-#define range_check(L, off, len, size) if ((off) < 0 || ((off)+((int)size)) > (len)) {luaL_error(L, "buffer access out of range");}
-#define buffer_check(L, index) if ((lua_getmetatable(L,index) != 0) && lua_rawequal(L, -1, lua_upvalueindex(1))) {lua_pop(L,1);} else {luaL_argerror(L, index, "expected buffer");}
-
 // typedefs for readability
 
 /*
@@ -37,16 +34,30 @@ typedef double f64_t;
 
 typedef struct buffer {
 	int length;
-	char bytes;
+	char bytes[1];
 } user_Buffer;
+
+// todo: try something like (off == (off & 0x00FFFFFF))
+static inline void range_check(lua_State *L, int offset, int len, size_t size){
+	if (offset < 0 || offset >= len || (offset+(int)size) > len) {
+		luaL_error(L, "buffer access out of range");
+	}
+}
+
+static inline void buffer_check(lua_State *L, int index) {
+	if ((lua_getmetatable(L,index) != 0) && lua_rawequal(L, -1, lua_upvalueindex(1))) {
+		lua_pop(L,1);
+	} else {
+		luaL_argerror(L, index, "expected buffer");
+	}
+}
 
 static int buf_readu8(lua_State *L) {
 	buffer_check(L,1);
 	struct buffer *buf = (struct buffer*) lua_touserdata(L,1);
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(uint8_t));
-	char* bufbytes = &(buf->bytes) + offset;
-	lua_pushunsigned(L, (uint8_t) *bufbytes);
+	lua_pushunsigned(L, (uint8_t) buf->bytes[offset]);
 	return 1;
 }
 
@@ -56,7 +67,7 @@ static int buf_writeu8(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(uint8_t));
 	uint8_t value = (uint8_t) luaL_checkunsigned(L,3);
-	*(&(buf->bytes)+offset) = value;
+	buf->bytes[offset] = value;
 	return 0;
 }
 
@@ -65,8 +76,7 @@ static int buf_readi8(lua_State *L) {
 	struct buffer *buf = (struct buffer*) lua_touserdata(L,1);
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(int8_t));
-	char* bufbytes = &(buf->bytes) + offset;
-	lua_pushinteger(L, (int8_t) *bufbytes);
+	lua_pushinteger(L, (int8_t) buf->bytes[offset]);
 	return 1;
 }
 
@@ -76,7 +86,7 @@ static int buf_writei8(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(int8_t));
 	int8_t value = (int8_t) luaL_checkint(L,3);
-	*(&(buf->bytes)+offset) = value;
+	buf->bytes[offset] = value;
 	return 0;
 }
 
@@ -86,10 +96,10 @@ static int buf_readi16(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(int16_t));
 	int16_t value;
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	valbytes[0] = bufbytes[1];
-	valbytes[1] = bufbytes[0];
+	valbytes[0] = bufbytes[offset+1];
+	valbytes[1] = bufbytes[offset];
 	lua_pushinteger(L, value);
 	return 1;
 }
@@ -100,10 +110,10 @@ static int buf_writei16(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(int16_t));
 	int16_t value = luaL_checkint(L,3);
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	bufbytes[0] = valbytes[1]; // This is slightly faster??
-	bufbytes[1] = valbytes[0];
+	bufbytes[offset]   = valbytes[1]; // This is slightly faster??
+	bufbytes[offset+1] = valbytes[0];
 	return 0;
 }
 
@@ -113,10 +123,10 @@ static int buf_readu16(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(uint16_t));
 	uint16_t value;
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	valbytes[0] = bufbytes[1];
-	valbytes[1] = bufbytes[0];
+	valbytes[0] = bufbytes[offset+1];
+	valbytes[1] = bufbytes[offset];
 	lua_pushunsigned(L, value);
 	return 1;
 }
@@ -127,10 +137,10 @@ static int buf_writeu16(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(uint16_t));
 	int16_t value = luaL_checkunsigned(L,3);
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	bufbytes[0] = valbytes[1];
-	bufbytes[1] = valbytes[0];
+	bufbytes[offset]   = valbytes[1];
+	bufbytes[offset+1] = valbytes[0];
 	return 0;
 }
 
@@ -140,12 +150,12 @@ static int buf_readi32(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(int32_t));
 	int32_t value;
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	valbytes[0] = bufbytes[3];
-	valbytes[1] = bufbytes[2];
-	valbytes[2] = bufbytes[1];
-	valbytes[3] = bufbytes[0];
+	valbytes[0] = bufbytes[offset + 3];
+	valbytes[1] = bufbytes[offset + 2];
+	valbytes[2] = bufbytes[offset + 1];
+	valbytes[3] = bufbytes[offset];
 	lua_pushinteger(L, value);
 	return 1;
 }
@@ -156,12 +166,12 @@ static int buf_writei32(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(int32_t));
 	int32_t value = luaL_checkint(L,3);
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	bufbytes[0] = valbytes[3];
-	bufbytes[1] = valbytes[2];
-	bufbytes[2] = valbytes[1];
-	bufbytes[3] = valbytes[0];
+	bufbytes[offset]     = valbytes[3];
+	bufbytes[offset + 1] = valbytes[2];
+	bufbytes[offset + 2] = valbytes[1];
+	bufbytes[offset + 3] = valbytes[0];
 	return 0;
 }
 
@@ -171,12 +181,12 @@ static int buf_readu32(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(uint32_t));
 	uint32_t value;
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	valbytes[0] = bufbytes[3];
-	valbytes[1] = bufbytes[2];
-	valbytes[2] = bufbytes[1];
-	valbytes[3] = bufbytes[0];
+	valbytes[0] = bufbytes[offset + 3];
+	valbytes[1] = bufbytes[offset + 2];
+	valbytes[2] = bufbytes[offset + 1];
+	valbytes[3] = bufbytes[offset];
 	lua_pushunsigned(L, value);
 	return 1;
 }
@@ -187,12 +197,12 @@ static int buf_writeu32(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(uint32_t));
 	uint32_t value = luaL_checkunsigned(L,3);
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	bufbytes[0] = valbytes[3];
-	bufbytes[1] = valbytes[2];
-	bufbytes[2] = valbytes[1];
-	bufbytes[3] = valbytes[0];
+	bufbytes[offset]     = valbytes[3];
+	bufbytes[offset + 1] = valbytes[2];
+	bufbytes[offset + 2] = valbytes[1];
+	bufbytes[offset + 3] = valbytes[0];
 	return 0;
 }
 
@@ -202,12 +212,12 @@ static int buf_readf32(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(f32_t));
 	float value;
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	valbytes[0] = bufbytes[3];
-	valbytes[1] = bufbytes[2];
-	valbytes[2] = bufbytes[1];
-	valbytes[3] = bufbytes[0];
+	valbytes[0] = bufbytes[offset + 3];
+	valbytes[1] = bufbytes[offset + 2];
+	valbytes[2] = bufbytes[offset + 1];
+	valbytes[3] = bufbytes[offset];
 	lua_pushnumber(L, (double) value);
 	return 1;
 }
@@ -218,12 +228,12 @@ static int buf_writef32(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(f32_t));
 	float value = (float) luaL_checknumber(L,3);
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	bufbytes[0] = valbytes[3];
-	bufbytes[1] = valbytes[2];
-	bufbytes[2] = valbytes[1];
-	bufbytes[3] = valbytes[0];
+	bufbytes[offset]     = valbytes[3];
+	bufbytes[offset + 1] = valbytes[2];
+	bufbytes[offset + 2] = valbytes[1];
+	bufbytes[offset + 3] = valbytes[0];
 	return 0;
 }
 
@@ -233,16 +243,16 @@ static int buf_readf64(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(f64_t));
 	double value;
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	valbytes[0] = bufbytes[7];
-	valbytes[1] = bufbytes[6];
-	valbytes[2] = bufbytes[5];
-	valbytes[3] = bufbytes[4];
-	valbytes[4] = bufbytes[3];
-	valbytes[5] = bufbytes[2];
-	valbytes[6] = bufbytes[1];
-	valbytes[7] = bufbytes[0];
+	valbytes[0] = bufbytes[offset + 7];
+	valbytes[1] = bufbytes[offset + 6];
+	valbytes[2] = bufbytes[offset + 5];
+	valbytes[3] = bufbytes[offset + 4];
+	valbytes[4] = bufbytes[offset + 3];
+	valbytes[5] = bufbytes[offset + 2];
+	valbytes[6] = bufbytes[offset + 1];
+	valbytes[7] = bufbytes[offset];
 	lua_pushnumber(L, value);
 	return 1;
 }
@@ -253,16 +263,16 @@ static int buf_writef64(lua_State *L) {
 	int offset = luaL_checkint(L, 2);
 	range_check(L, offset, buf->length, sizeof(f64_t));
 	double value = luaL_checknumber(L,3);
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = buf->bytes;
 	char* valbytes = (char*)&value;
-	bufbytes[0] = valbytes[7];
-	bufbytes[1] = valbytes[6];
-	bufbytes[2] = valbytes[5];
-	bufbytes[3] = valbytes[4];
-	bufbytes[4] = valbytes[3];
-	bufbytes[5] = valbytes[2];
-	bufbytes[6] = valbytes[1];
-	bufbytes[7] = valbytes[0];
+	bufbytes[offset]     = valbytes[7];
+	bufbytes[offset + 1] = valbytes[6];
+	bufbytes[offset + 2] = valbytes[5];
+	bufbytes[offset + 3] = valbytes[4];
+	bufbytes[offset + 4] = valbytes[3];
+	bufbytes[offset + 5] = valbytes[2];
+	bufbytes[offset + 6] = valbytes[1];
+	bufbytes[offset + 7] = valbytes[0];
 	return 0;
 }
 
@@ -273,7 +283,7 @@ static int buf_readstring(lua_State *L) {
 	int count = luaL_checkint(L, 3);
 	luaL_argcheck(L, count >= 0, 3, "cannot read a string of negative length");
 	range_check(L, offset, buf->length, count);
-	lua_pushlstring(L, &(buf->bytes) + offset, (size_t) count);
+	lua_pushlstring(L, &(buf->bytes[offset]), (size_t) count);
 	return 1;
 }
 
@@ -286,7 +296,7 @@ static int buf_writestring(lua_State *L) {
 	unsigned int count = luaL_optunsigned(L, 4, slen);
 	luaL_argcheck(L, count <= slen, 4, "count cannot be larger than string length");
 	range_check(L, offset, buf->length, count);
-	char* bufbytes = &(buf->bytes) + offset;
+	char* bufbytes = &(buf->bytes[offset]);
 	memcpy(bufbytes, str, count); // Probably fine.
 	return 0;
 }
@@ -297,7 +307,7 @@ static int buf_fill(lua_State *L) {
 	int offset = luaL_checkint(L,2);
 	unsigned char value = (unsigned char) luaL_checkint(L,3);
 	unsigned int count = luaL_optunsigned(L, 4, (buf->length) - offset);
-	memset(&(buf->bytes) + offset, value, count);
+	memset(&(buf->bytes[offset]), value, count);
 	return 0;
 }
 
