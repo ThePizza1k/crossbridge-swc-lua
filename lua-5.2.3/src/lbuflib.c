@@ -15,6 +15,9 @@
 
 #define BUFFER_SIZE_CAP 16777216
 
+#define FlashObj unsigned int
+FlashObj* push_newflashref(lua_State *L); // Grab from flashlib.c
+
 // typedefs for readability
 
 /*
@@ -311,17 +314,33 @@ static int buf_fill(lua_State *L) {
 	return 0;
 }
 
-static int buf_new(lua_State *L) {
-	int length = luaL_checkint(L, 1);
-	lua_pop(L, 1);
-	luaL_argcheck(L, length > 0, 1, "buffer length must be greater than 0");
-	if (length > BUFFER_SIZE_CAP) {
-		luaL_error(L, "bad argument #1 to 'new' (buffer length cannot be greater than %d)", BUFFER_SIZE_CAP);
-	}
-	struct buffer *buf = lua_newuserdata(L, sizeof(int) + length);
-	memset(&(buf->bytes), 0, length);
-	buf->length = length;
-	luaL_setmetatable(L, "buffer");
+static int buf_length(lua_State *L) {
+	buffer_check(L, 1);
+	struct buffer *buf = (struct buffer*) lua_touserdata(L,1);
+	lua_pushinteger(L, buf->length);
+	return 1;
+}
+
+static int buf_lengthMT(lua_State *L) { // This is stupid.
+	struct buffer *buf = (struct buffer*) lua_touserdata(L,1);
+	lua_pushinteger(L, buf->length);
+	return 1;
+}
+
+static int buf_toAS3(lua_State *L) { // called by lflashlib via metamethod.
+	struct buffer *buf = (struct buffer*) lua_touserdata(L,1);
+	char* bytes = buf->bytes;
+	int length = buf->length;
+	FlashObj* obj = push_newflashref(L);
+	inline_as3(
+		"import flash.utils.ByteArray;\n"
+		"var ba:ByteArray = new ByteArray();\n"
+		"CModule.readBytes(%1, %2, ba);\n"
+		"ba.position = 0;\n"
+		"__lua_objrefs[%0] = ba;\n"
+		:
+		: "r"(obj), "r"(bytes), "r"(length)
+	);
 	return 1;
 }
 
@@ -332,8 +351,32 @@ LUALIB_API void luaL_newuserbuffer(lua_State *L, int length) { // Creates a buff
 	luaL_setmetatable(L, "buffer");
 }
 
+static int buf_new(lua_State *L) {
+	int length = luaL_checkint(L, 1);
+	lua_pop(L, 1);
+	luaL_argcheck(L, length > 0, 1, "buffer length must be greater than 0");
+	if (length > BUFFER_SIZE_CAP) {
+		luaL_error(L, "bad argument #1 to 'new' (buffer length cannot be greater than %d)", BUFFER_SIZE_CAP);
+	}
+	luaL_newuserbuffer(L, length);
+	return 1;
+}
+
+static int buf_fromstring(lua_State *L) {
+	size_t length;
+	const char* str = luaL_checklstring (L, 1, &length);
+	if (length > BUFFER_SIZE_CAP) {
+		luaL_error(L, "bad argument #1 to 'new' (buffer length cannot be greater than %d)", BUFFER_SIZE_CAP);
+	}
+	luaL_newuserbuffer(L, length);
+	struct buffer *buf = (struct buffer*) lua_touserdata(L,-1);
+	memcpy(&(buf->bytes[0]), str, length);
+	return 1;
+}
+
 static const luaL_Reg buflib[] = {
 	{"new",     buf_new},
+	{"fromstring", buf_fromstring},
 	{"writeu8", buf_writeu8},
 	{"readu8", buf_readu8},
 	{"writei8", buf_writei8},
@@ -353,6 +396,7 @@ static const luaL_Reg buflib[] = {
 	{"readstring", buf_readstring},
 	{"writestring", buf_writestring},
 	{"fill", buf_fill},
+	{"len", buf_length},
 	{NULL, NULL}
 };
 
@@ -363,6 +407,10 @@ LUAMOD_API int luaopen_buf (lua_State *L) {
 	lua_setfield(L, 3, "__index");
 	lua_pushliteral(L, "buffer");
 	lua_setfield(L, 3, "__type");
+	lua_pushcfunction(L, buf_lengthMT);
+	lua_setfield(L, 3, "__len");
+	lua_pushcfunction(L, buf_toAS3);
+	lua_setfield(L, 3, "__as3");
 	luaL_setfuncs(L, buflib, 1);
 	return 1;
 }
