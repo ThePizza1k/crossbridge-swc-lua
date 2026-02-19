@@ -310,7 +310,24 @@ static int buf_fill(lua_State *L) {
 	int offset = luaL_checkint(L,2);
 	unsigned char value = (unsigned char) luaL_checkint(L,3);
 	unsigned int count = luaL_optunsigned(L, 4, (buf->length) - offset);
+	luaL_argcheck(L, count < BUFFER_SIZE_CAP, 4, "attempted out of range buffer access");
+	range_check(L, offset, buf->length, count);
 	memset(&(buf->bytes[offset]), value, count);
+	return 0;
+}
+
+static int buf_copy(lua_State *L) { // buffer.copy(target: buffer, targetOffset: number, source: buffer, sourceOffset: number?, count: number?): ()
+	buffer_check(L, 1);
+	struct buffer *targetBuffer = (struct buffer*) lua_touserdata(L, 1);
+	int targetOffset = luaL_checkint(L, 2);
+	buffer_check(L, 3);
+	struct buffer *sourceBuffer = (struct buffer*) lua_touserdata(L, 3);
+	int sourceOffset = luaL_optinteger(L, 4, 0);
+	unsigned int count = luaL_optunsigned(L, 5, (unsigned int) sourceBuffer->length);
+	luaL_argcheck(L, count < BUFFER_SIZE_CAP, 5, "attempted out of range buffer access");
+	range_check(L, targetOffset, targetBuffer->length, count);
+	range_check(L, sourceOffset, sourceBuffer->length, count);
+	memmove(&(targetBuffer->bytes[targetOffset]), &(sourceBuffer->bytes[sourceOffset]), count);
 	return 0;
 }
 
@@ -375,28 +392,29 @@ static int buf_fromstring(lua_State *L) {
 }
 
 static const luaL_Reg buflib[] = {
-	{"new",     buf_new},
-	{"fromstring", buf_fromstring},
-	{"writeu8", buf_writeu8},
-	{"readu8", buf_readu8},
-	{"writei8", buf_writei8},
-	{"readi8", buf_readi8},
-	{"writeu16", buf_writeu16},
-	{"readu16", buf_readu16},
-	{"writei16", buf_writei16},
-	{"readi16", buf_readi16},
-	{"writeu32", buf_writeu32},
-	{"readu32", buf_readu32},
-	{"writei32", buf_writei32},
-	{"readi32", buf_readi32},
-	{"writef32", buf_writef32},
-	{"readf32", buf_readf32},
-	{"writef64", buf_writef64},
-	{"readf64", buf_readf64},
-	{"readstring", buf_readstring},
+	{"new",                 buf_new},
+	{"fromstring",   buf_fromstring},
+	{"writeu8",         buf_writeu8},
+	{"readu8",           buf_readu8},
+	{"writei8",         buf_writei8},
+	{"readi8",           buf_readi8},
+	{"writeu16",       buf_writeu16},
+	{"readu16",         buf_readu16},
+	{"writei16",       buf_writei16},
+	{"readi16",         buf_readi16},
+	{"writeu32",       buf_writeu32},
+	{"readu32",         buf_readu32},
+	{"writei32",       buf_writei32},
+	{"readi32",         buf_readi32},
+	{"writef32",       buf_writef32},
+	{"readf32",         buf_readf32},
+	{"writef64",       buf_writef64},
+	{"readf64",         buf_readf64},
+	{"readstring",   buf_readstring},
 	{"writestring", buf_writestring},
-	{"fill", buf_fill},
-	{"len", buf_length},
+	{"fill",               buf_fill},
+	{"copy",               buf_copy},
+	{"len",              buf_length},
 	{NULL, NULL}
 };
 
