@@ -338,9 +338,9 @@ static int buf_length(lua_State *L) {
 	return 1;
 }
 
-static int buf_lengthMT(lua_State *L) { // This is stupid.
-	struct buffer *buf = (struct buffer*) lua_touserdata(L,1);
-	lua_pushinteger(L, buf->length);
+static int buf_tostring(lua_State *L) {
+	struct buffer *buf = (struct buffer*) lua_touserdata(L, 1);
+	lua_pushfstring(L, "buffer: %p", buf);
 	return 1;
 }
 
@@ -425,10 +425,13 @@ LUAMOD_API int luaopen_buf (lua_State *L) {
 	lua_setfield(L, 3, "__index");
 	lua_pushliteral(L, "buffer");
 	lua_setfield(L, 3, "__type");
-	lua_pushcfunction(L, buf_lengthMT);
+	lua_pushvalue(L, 3); // copy metamethod table.
+	lua_pushcclosure(L, buf_length, 1);
 	lua_setfield(L, 3, "__len");
 	lua_pushcfunction(L, buf_toAS3);
 	lua_setfield(L, 3, "__as3");
+	lua_pushcfunction(L, buf_tostring);
+	lua_setfield(L, 3, "__tostring");
 	luaL_setfuncs(L, buflib, 1);
 	return 1;
 }
