@@ -19,19 +19,18 @@
 FlashObj* push_newflashref(lua_State *L); // Grab from flashlib.c
 LUALIB_API void luaL_registerAS3Conversion(lua_State *L, const char *className); // Also grab from flashlib.c
 
-// typedefs for readability
-
 /*
-typedef unsigned char uint8_t;
-typedef char int8_t;
+buffer library provides Lua with a fixed size, mutable block of memory.
 
-typedef unsigned short uint16_t;
-typedef short int16_t;
+This buffer library reads and writes in big endian order, to better correspond with Actionscript 3 ByteArrays.
+(Note that this assumes little endian order, but this is fine because nobody gaf about big endian architectures and this is only ever running in flash anyways)
 
-typedef unsigned long uint32_t;
-typedef long int32_t;
+__as3 metamethod and the automatic conversion system means that Lua can provide buffers to AS3 defined functions and AS3 will see it as a ByteArray, and vice versa.
 
+this *might* have memory safety issues. I haven't exactly verified it or anything. I am range checking everything at least.
 */
+
+// For readability
 typedef float f32_t;
 typedef double f64_t;
 
@@ -41,7 +40,7 @@ typedef struct buffer {
 	char bytes[1];
 } user_Buffer;
 
-// todo: try something like (off == (off & 0x00FFFFFF))
+
 static inline void range_check(lua_State *L, int offset, int len, size_t size){
 	if (offset < 0 || offset >= len || (offset+(int)size) > len) {
 		luaL_error(L, "buffer access out of range");
@@ -461,7 +460,7 @@ LUAMOD_API int luaopen_buf (lua_State *L) {
 	luaL_setfuncs(L, buflib, 1);
 
 	lua_pushcfunction(L, buf_fromAS3);
-	luaL_registerAS3Conversion(L, "flash.utils.ByteArray");
+	luaL_registerAS3Conversion(L, "flash.utils.ByteArray"); // buffer library is designed to correspond to AS3 ByteArray.
 
 	return 1;
 }
