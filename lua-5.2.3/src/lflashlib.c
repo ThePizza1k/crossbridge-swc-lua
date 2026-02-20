@@ -14,6 +14,7 @@
 #define LUA_LIB
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "AS3/AS3.h"
 #include "lua.h"
@@ -295,7 +296,26 @@ static int flash_closure_apply (lua_State *L) {
       }
       case LUA_TUSERDATA: 
       {
-        inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(getObjRef(L, i)));
+				void* ud = lua_touserdata(L, i);
+				int isFlash = 0;
+				inline_as3("%0 = (int) (%1 in __lua_objrefs);\n" : "=r"(isFlash) : "r"((int) ud));
+				if (isFlash) {
+					inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(getObjRef(L, i)));
+					break;
+				} else {
+					isFlash = luaL_getmetafield(L, i, "__as3");
+					if (isFlash) { // Conversion to AS3 exists.
+						lua_pushvalue(L, i);
+						lua_call(L, 1, 1);
+						inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(lua_touserdata(L, -1)));
+						lua_pop(L, 1);
+					} else { // we convert as a LuaReference
+						lua_pushvalue(L, i);
+						int uRef = luaL_ref(L,LUA_REGISTRYINDEX);
+						inline_as3("var udRef:* = new LuaReference(%0, %1);\n" : : "r"(L), "r"(uRef));
+						inline_as3("args.push(udRef); refs.push(udRef);\n" : : );
+					}
+				}
         break;
       }
       case LUA_TSTRING:
@@ -492,7 +512,26 @@ static int flash_metacall (lua_State *L) {
       }
       case LUA_TUSERDATA: 
       {
-        inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(getObjRef(L, i)));
+				void* ud = lua_touserdata(L, i);
+				int isFlash = 0;
+				inline_as3("%0 = (int) (%1 in __lua_objrefs);\n" : "=r"(isFlash) : "r"((int) ud));
+				if (isFlash) {
+					inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(getObjRef(L, i)));
+					break;
+				} else {
+					isFlash = luaL_getmetafield(L, i, "__as3");
+					if (isFlash) { // Conversion to AS3 exists.
+						lua_pushvalue(L, i);
+						lua_call(L, 1, 1);
+						inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(lua_touserdata(L, -1)));
+						lua_pop(L, 1);
+					} else { // we convert as a LuaReference
+						lua_pushvalue(L, i);
+						int uRef = luaL_ref(L,LUA_REGISTRYINDEX);
+						inline_as3("var udRef:* = new LuaReference(%0, %1);\n" : : "r"(L), "r"(uRef));
+						inline_as3("args.push(udRef); refs.push(udRef);\n" : : );
+					}
+				}
         break;
       }
       case LUA_TSTRING:
@@ -975,6 +1014,16 @@ static int flash_register (lua_State *L){
   int ref = luaL_ref(L, LUA_REGISTRYINDEX);
   inline_as3("__lua_typerefs[%0][clz] = %1;\n" : : "r"(L), "r"(ref));
   return 0;
+}
+
+LUALIB_API void luaL_registerAS3Conversion(lua_State *L, const char *className) { // Pulls a function off top of stack to use for converting.
+	size_t len = strlen(className);
+  AS3_DeclareVar(classname, String);
+  AS3_CopyCStringToVar(classname, className, len);
+  inline_as3("import flash.utils.getDefinitionByName;\n");
+  inline_as3("var clz:Class = getDefinitionByName(classname);\n");
+	int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	inline_as3("__lua_typerefs[%0][clz] = %1;\n" : : "r"(L), "r"(ref));
 }
 
 static int flash_getclass (lua_State *L){

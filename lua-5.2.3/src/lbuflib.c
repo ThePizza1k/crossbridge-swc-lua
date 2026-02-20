@@ -17,6 +17,7 @@
 
 #define FlashObj unsigned int
 FlashObj* push_newflashref(lua_State *L); // Grab from flashlib.c
+LUALIB_API void luaL_registerAS3Conversion(lua_State *L, const char *className); // Also grab from flashlib.c
 
 // typedefs for readability
 
@@ -355,6 +356,7 @@ static int buf_toAS3(lua_State *L) { // called by lflashlib via metamethod.
 		"CModule.readBytes(%1, %2, ba);\n"
 		"ba.position = 0;\n"
 		"__lua_objrefs[%0] = ba;\n"
+		"__lua_objrefs[ba] = %0;\n"
 		:
 		: "r"(obj), "r"(bytes), "r"(length)
 	);
@@ -388,6 +390,30 @@ static int buf_fromstring(lua_State *L) {
 	luaL_newuserbuffer(L, length);
 	struct buffer *buf = (struct buffer*) lua_touserdata(L,-1);
 	memcpy(&(buf->bytes[0]), str, length);
+	return 1;
+}
+
+static int buf_fromAS3(lua_State *L) { // called by lflashlib for conversion to buffer.
+	FlashObj* obj = (FlashObj*) lua_touserdata(L, 1);
+	int length = -1;
+	inline_as3( // read object and length
+		"import flash.utils.ByteArray;\n"
+		"var ba:ByteArray = __lua_objrefs[%1] as ByteArray;\n"
+		"%0 = ba.length;\n"
+		: "=r"(length)
+		: "r"((int) obj)
+	);
+	lua_pop(L, 1);
+	luaL_newuserbuffer(L, length);
+	struct buffer *buf = (struct buffer*) lua_touserdata(L,-1);
+	inline_as3(
+		"var temp:uint = ba.position;\n" // Preserve bytearray position.
+		"ba.position = 0;\n"
+		"CModule.writeBytes(%0, %1, ba);\n"
+		"ba.position = temp;\n"
+		:
+		: "r"((int) &(buf->bytes[0])), "r"(length)
+	);
 	return 1;
 }
 
@@ -433,5 +459,9 @@ LUAMOD_API int luaopen_buf (lua_State *L) {
 	lua_pushcfunction(L, buf_tostring);
 	lua_setfield(L, 3, "__tostring");
 	luaL_setfuncs(L, buflib, 1);
+
+	lua_pushcfunction(L, buf_fromAS3);
+	luaL_registerAS3Conversion(L, "flash.utils.ByteArray");
+
 	return 1;
 }

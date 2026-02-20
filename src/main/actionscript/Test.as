@@ -39,17 +39,24 @@ package{
 			f.execute();
 		}
 
-		public static function playArrayAsSound(arr : Array) : void
+		public static function flipBytes(bytes : ByteArray) : ByteArray
 		{
-			if (arr.length < 1) {throw new ArgumentError("Array must have stuff in it");}
-			var byteArr : ByteArray = new ByteArray();
-			byteArr.length = arr.length * 4;
-			for (var i : int = 0; i < arr.length; i++){
-				byteArr.writeFloat(arr[i]);
+			var newBytes:ByteArray = new ByteArray();
+			newBytes.length = bytes.length;
+			var i : int = bytes.length - 1;
+			while (i >= 0) {
+				bytes.position = i;
+				newBytes.writeByte(bytes.readByte());
+				i--;
 			}
+			return newBytes;
+		}
+
+		public static function playBytesAsSound(byteArr : ByteArray) : void
+		{
 			byteArr.position = 0;
 			var sound:Sound = new Sound();
-			sound.loadPCMFromByteArray(byteArr, arr.length, "float", false, 44100.0);
+			sound.loadPCMFromByteArray(byteArr, uint(byteArr.length/4), "float", false, 44100.0);
 			sound.play();
 		}
 
