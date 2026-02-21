@@ -8,6 +8,10 @@ Some base Lua libraries were extended.
 
 The flash library provides some tools for interop with AS3. Be aware that some of these functions are not safe, and should not be allowed for user code.
 
+<details>
+
+<summary>Functions</summary>
+
 ### flash.trace(str : string|number) : void
   - Equivalent to AS3 `trace(str);`.
   - Input will be converted to string.
@@ -60,12 +64,18 @@ The flash library provides some tools for interop with AS3. Be aware that some o
   - The `__newindex` metamethod attempts to set the given property. Any error that occurs is silenced.
   - The `__call` metamethod will call the AS3 object with the given arguments, if it is a `Function`, and return the result. Any error that occurs is thrown as a Lua error.
     - Follows the same semantics for returns as `__index`.
+   
+</details>
 
 ## Random Library
 
 The random library allows the creation of RNG objects, which can be used to generate random numbers.
 Each RNG object has its own state, independent of all others.
 In this section, `RNG` is used as a standin for any arbitrary RNG object.
+
+<details>
+
+<summary>Functions</summary>
 
 ### random.new(seed : number?) : RNG
   - Returns a new RNG object.
@@ -97,6 +107,8 @@ In this section, `RNG` is used as a standin for any arbitrary RNG object.
   - RNG objects are internally `userdata`
   - RNG objects currently use xoshiro256+ to generate random numbers.
 
+</details>
+
 ## Buffer Library
 
 The buffer library allows the creation and usage of fixed size, mutable blocks of memory.
@@ -108,6 +120,9 @@ Buffers are automatically converted to/from ByteArrays when going between AS3 an
 todo: document everything
 
 ## Library Extensions
+
+<details>
+<summary>Math extensions</summary>
 
 ### math.clamp(m : number, min : number, max : number): number
   - Returns n if min < n < max.
@@ -123,6 +138,11 @@ todo: document everything
   - Rounds m to nearest integer.
   - If m is halfway between 2 integers, rounds away from 0.
 
+</details>
+
+<details>
+<summary>Table extensions</summary>
+
 ### table.find(t : table, v : any, n : number?) : number?
   - Returns the index of first element in t equal to v.
   - If not found, returns nil.
@@ -134,3 +154,4 @@ todo: document everything
   - nrec is a hint for how many other elements the table will have.
   - Lua may use these hints to preallocate space for the table, providing a performance boost in some situations.
   - Errors if narr or nrec are negative, or if memory allocation fails.
+</details>
