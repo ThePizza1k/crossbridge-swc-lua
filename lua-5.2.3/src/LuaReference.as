@@ -62,7 +62,7 @@ package crossbridge.lua{
 					Lua.lua_replace(L, -2);
 				}
 				if (obj.constructor in __lua_typerefs[L]) {
-					Lua.lua_rawgeti(L, LuaEnums.LUA_REGISTRYINDEX, t_ref);
+					Lua.lua_rawgeti(L, LuaEnums.LUA_REGISTRYINDEX, __lua_typerefs[L][obj.constructor]);
 					Lua.lua_pushvalue(L, -2);
 					Lua.lua_pcallk(L, 1, 1, 0, 0, null);
 					Lua.lua_replace(L, -2);
@@ -95,9 +95,18 @@ package crossbridge.lua{
 						return __lua_objrefs[ptr];
 					} else {
 						if (ind < 0) {ind = Lua.lua_gettop(L) + ind + 1;}
-						Lua.lua_pushvalue(L,ind);
-						var ref:int = Lua.luaL_ref(L, LuaEnums.LUA_REGISTRYINDEX);
-						return new LuaReference(L, ref);
+						var converts:int = Lua.luaL_getmetafield(L, ind, "__as3");
+						if (converts != 0) {
+							Lua.lua_pushvalue(L, ind);
+							Lua.lua_callk(L, 1, 1, 0, null); // lua_call does not exist because swig is stupid idk.
+							var obj:Object = __lua_objrefs[Lua.lua_touserdata(L,ind)];
+							Lua.lua_pop(L, 1);
+							return obj;
+						} else {
+							Lua.lua_pushvalue(L,ind);
+							var ref:int = Lua.luaL_ref(L, LuaEnums.LUA_REGISTRYINDEX);
+							return new LuaReference(L, ref);
+						}
 					}
 				case (LuaEnums.LUA_TLIGHTUSERDATA):
 					return Lua.lua_touserdata(L,ind); // dubious return for this (returns as int), but we're not using light userdata anyways.
@@ -144,14 +153,25 @@ package crossbridge.lua{
 		/*
 			Returns a string with the type name of the Lua object.
 			e.g "table", or "userdata".
-			TODO: respect __type. (This will be from a change on the C side to LuaL_typename. Maybe. Idk yet.)
 		*/
 		public function typename() : String
 		{
 			Lua.lua_rawgeti(this.L,LuaEnums.LUA_REGISTRYINDEX,this.ref);
 			var t:int = Lua.lua_type(this.L,-1);
-			Lua.lua_pop(this.L,1);
-			return LuaEnums.LUA_TYPEMAP[t];
+			if (t != LuaEnums.LUA_TUSERDATA) {
+				Lua.lua_pop(this.L,1);
+				return LuaEnums.LUA_TYPEMAP[t];
+			} else {
+				var hasField = Lua.luaL_getmetafield(L, -1, "__type");
+				if (hasField == 0) {
+					Lua.lua_pop(this.L, 1);
+					return LuaEnums.LUA_TYPEMAP[t];
+				} else {
+					var tName:String = Lua.lua_tolstring(L, -1);
+					Lua.lua_pop(this.L, 2);
+					return tName;
+				}
+			}
 		}
 	
 		/*

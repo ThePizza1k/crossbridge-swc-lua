@@ -39,6 +39,11 @@ package{
 			f.execute();
 		}
 
+		public static function callWith(f: LuaReference, ... args) : Array
+		{
+			return f.call.apply(f,args);
+		}
+
 		public static function flipBytes(bytes : ByteArray) : ByteArray
 		{
 			var newBytes:ByteArray = new ByteArray();
