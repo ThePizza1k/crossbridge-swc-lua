@@ -97,6 +97,16 @@ In this section, `RNG` is used as a standin for any arbitrary RNG object.
   - RNG objects are internally `userdata`
   - RNG objects currently use xoshiro256+ to generate random numbers.
 
+## Buffer Library
+
+The buffer library allows the creation and usage of fixed size, mutable blocks of memory.
+Buffer objects are capped at a length of 16777216 bytes.
+Read and write operations for numeric values use big endian byte order.
+
+Buffers are automatically converted to/from ByteArrays when going between AS3 and Lua.
+
+todo: document everything
+
 ## Library Extensions
 
 ### math.clamp(m : number, min : number, max : number): number
