@@ -29,6 +29,63 @@ Type checking is up to the user.
 ### luaReference.typename() : String
   - Returns a string with the type name of the Lua object.
   - e.g `"table"`, or `"userdata"`.
-  - This does not respect `__type` currently. This can be worked around by checking the metatable for now.
+
+### luaReference.clone() : LuaReference
+  - Returns another LuaReference that refers to the same object.
+  - idk why you'd need this but it's there
+
+### luaReference.incRef() : void
+  - Increments the reference count.
+  - Use this when you somehow copy a reference, such as when storing it, or retrieving it and giving it to Lua.
+  - e.g `arr[3] = ref; ref.incRef(); // increment since we stored it.`
+  - e.g `var ref:LuaReference = arr[3]; ref.incRef(); return ref;`
+
+### luaReference.decRef() : void
+  - Decrements the reference count, freeing the reference if it reaches 0.
+  - Use this when you destroy a reference somehow (and you're done with it), such as clearing where the LuaReference is stored.
+  - This gets called automatically by Lua in two cases:
+    - On LuaReferences it gave to AS3 for a setter/function call, after said setter/function call completed.
+		- On a LuaReference returned by AS3, after it retrieves the value.
+
+### luaReference.getField(key : Object) : Object
+  - Equivalent to `ref[key]` in Lua.
+  - Can trigger `__index` metamethods.
+  - Key is converted to Lua equivalent (if possible), and the return value is converted to AS3 equivalent (if possible)
+  - This can throw a Lua error, which AS3 should not attempt to catch. (It is still safe to catch regular AS3 errors)
+    - If Lua panics, such as in case of an unprotected Lua error, it throws a regular AS3 error.
+   
+### luaReference.setField(key : Object, value : Object) : void
+  - Equivalent to `ref[key] = value` in Lua.
+  - Can trigger `__newindex` metamethods.
+  - Key and value converted to Lua equivalent (if possible).
+  - Same error behavior as getField.
+
+### luaReference.call(...) : Array
+  - Equivalent to `ref(...)` in Lua.
+  - Does not trigger `__call` metamethods.
+  - All args are converted to Lua equivalents, if possible.
+  - Returns an array, where arr[0] is the error code. (See https://www.lua.org/manual/5.2/manual.html#lua_pcall for error codes)
+    - If there is no error, arr[0] == 0, and remaining elements of the array are the functions return values.
+    - If there is an error, arr[0] will be something else, and arr[1] will contain the error message.
+
+### luaReference.execute(...) : Array
+  - The same as `call`, but all return values from the function are thrown away.
+  - Use this if you are not handling return values.
+
+### luaReference.checkType(expected:int, arg:int = -1, fname:String = null) : void
+  - Typechecks a LuaReference, throwing an error if it is wrong.
+  - Arg number and function name can be provided for additional error information.
+  - Use values in LuaEnum to specify type (e.g, LuaEnums.LUA_TBOOLEAN)
+
+### luaReference.toString() : String
+  - Returns a reasonable string conversion.
+  - Calls `__tostring` metamethod if it exists.
+
+### luaReference.getMetatable() : LuaReference
+  - Returns the metatable of the given lua object, should it exist.
+  - Returns null if there is no metatable.
+
+### luaReference.setMetatable(tab : LuaReference) : void
+  - Sets the metatable of the given Lua object to the given table.
 
 todo: document everything else
