@@ -115,6 +115,7 @@ In this section, `RNG` is used as a standin for any arbitrary RNG object.
 The buffer library allows the creation and usage of fixed size, mutable blocks of memory.
 Buffer objects are capped at a length of 16777216 bytes.
 Read and write operations for numeric values use big endian byte order.
+Buffer offset values are 0-based. (The first byte is at 0, and the last byte is at #b - 1)
 
 Any operation that would exceed the bounds of the buffer throw an error.
 
@@ -180,6 +181,25 @@ In this section, `buf` is used as a standin for any arbitrary buffer object.
   - f32 writes 4 bytes, and f64 writes 8 bytes.
   - f64 preserves all precision of the number, while f32 reduces precision somewhat.
 <br/>
+
+### buffer.readstring(b : buffer, offset : number, count : number) : string
+  - Reads a string of length 'count' from the buffer, starting from the specified offset.
+  - Not null terminated.
+
+### buffer.writestring(b : buffer, offset : number, value : string, count : number? = #value) : void
+  - Writes a string to the buffer, starting at the specified offset.
+  - If a count is specified, only writes the given amount from the string.
+  - Not null terminated.
+
+### buffer.fill(b : buffer, offset : number, value : number, count : number?) : void
+  - Fills a buffer with a given byte value, starting from the offset.
+  - If a count is specified, only writes that many bytes. Otherwise, it writes to the end of the buffer.
+
+### buffer.copy(dest: buffer, destOffset: number, source: buffer, sourceOffset: number? = 0, count: number? = #sourceOffset): void
+  - Copies data from source to dest.
+  - Data is copied from source starting at sourceOffset (or 0 if not provided)
+  - Data is copied to dest starting at destOffset.
+  - If a count is not specified, copies the entire source buffer. Otherwise, only copies the specified number of bytes.
   
 </details>
 
