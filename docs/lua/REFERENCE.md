@@ -113,13 +113,6 @@ In this section, `RNG` is used as a standin for any arbitrary RNG object.
 ## Buffer Library
 
 The buffer library allows the creation and usage of fixed size, mutable blocks of memory.
-Buffer objects are capped at a length of 16777216 bytes.
-Read and write operations for numeric values use big endian byte order.
-Buffer offset values are 0-based. (The first byte is at 0, and the last byte is at #b - 1)
-
-Any operation that would exceed the bounds of the buffer throw an error.
-
-Buffers are automatically converted to/from ByteArrays when going between AS3 and Lua.
 
 <details>
 <summary>Buffer functions</summary>
@@ -200,6 +193,16 @@ In this section, `buf` is used as a standin for any arbitrary buffer object.
   - Data is copied from source starting at sourceOffset (or 0 if not provided)
   - Data is copied to dest starting at destOffset.
   - If a count is not specified, copies the entire source buffer. Otherwise, only copies the specified number of bytes.
+
+### Buffer objects.
+  - `tostring(buf)` returns `"buffer: {ptr}"`
+  - `type(buf)` returns `"buffer"`
+  - Buffer objects are capped at a length of 16777216 bytes.
+  - Read and write operations for numeric values use big endian byte order.
+  - Buffer offset values are 0-based. (The first byte is at 0, and the last byte is at #b - 1)
+  - Any operation that would exceed the bounds of the buffer throws an error.
+  - Buffers are automatically converted to/from ByteArrays when going between AS3 and Lua.
+  - Buffers index to the buffer table, so you can write `buf:writef64(0, math.pi)`
   
 </details>
 
