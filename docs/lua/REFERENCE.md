@@ -71,11 +71,12 @@ The flash library provides some tools for interop with AS3. Be aware that some o
 
 The random library allows the creation of RNG objects, which can be used to generate random numbers.
 Each RNG object has its own state, independent of all others.
-In this section, `RNG` is used as a standin for any arbitrary RNG object.
 
 <details>
 
 <summary>Functions</summary>
+
+In this section, `RNG` is used as a standin for any arbitrary RNG object.
 
 ### random.new(seed : number?) : RNG
   - Returns a new RNG object.
@@ -115,9 +116,72 @@ The buffer library allows the creation and usage of fixed size, mutable blocks o
 Buffer objects are capped at a length of 16777216 bytes.
 Read and write operations for numeric values use big endian byte order.
 
+Any operation that would exceed the bounds of the buffer throw an error.
+
 Buffers are automatically converted to/from ByteArrays when going between AS3 and Lua.
 
-todo: document everything
+<details>
+<summary>Buffer functions</summary>
+
+In this section, `buf` is used as a standin for any arbitrary buffer object.
+
+### buffer.new(size : number) : buffer
+  - Creates a new buffer of the given size.
+  - Size cannot exceed 16777216 bytes.
+
+### buffer.fromstring(str : string) : buffer
+  - Creates a new buffer from the contents of the string.
+  - The buffer will have the same size as the string.
+  - Buffer size cannot exceed 16777216 bytes.
+
+### buffer.len(b : buffer) : number
+  - Returns the length of the buffer.
+  - `#buf` is equivalent to this.
+
+### buffer.readu8(b : buffer, offset : number) : number
+### buffer.readu16(b : buffer, offset : number) : number
+### buffer.readu32(b : buffer, offset : number) : number
+  - Reads the bytes at the given offset as an unsigned integer, and returns it.
+  - u8 reads 1 byte, u16 reads 2 bytes, and u32 reads 4 bytes.
+<br/>
+
+### buffer.readi8(b : buffer, offset : number) : number
+### buffer.readi16(b : buffer, offset : number) : number
+### buffer.readi32(b : buffer, offset : number) : number
+  - Reads the bytes at the given offset as a signed integer, and returns it.
+  - i8 reads 1 byte, i16 reads 2 bytes, and i32 reads 4 bytes.
+<br/>
+
+### buffer.readf32(b : buffer, offset : number) : number
+### buffer.readf64(b : buffer, offset : number) : number
+  - Reads the bytes at the given offset as a floating point number, and returns it.
+  - f32 reads 4 bytes, and f64 reads 8 bytes.
+<br/>
+
+### buffer.writeu8(b : buffer, offset : number, value : number) : void
+### buffer.writeu16(b : buffer, offset : number, value : number) : void
+### buffer.writeu32(b : buffer, offset : number, value : number) : void
+  - Casts the given value to an unsigned integer, and writes it to the buffer at the specified offset.
+  - u8 writes 1 byte, u16 writes 2 bytes, and u32 writes 4 bytes.
+  - Larger data types have larger range
+<br/>
+
+### buffer.writei8(b : buffer, offset : number, value : number) : void
+### buffer.writei16(b : buffer, offset : number, value : number) : void
+### buffer.writei32(b : buffer, offset : number, value : number) : void
+  - Casts the given value to a signed integer, and writes it to the buffer at the specified offset.
+  - i8 writes 1 byte, i16 writes 2 bytes, and i32 writes 4 bytes.
+  - Larger data types have larger range.
+<br/>
+
+### buffer.writef32(b : buffer, offset : number, value : number) : void
+### buffer.writef64(b : buffer, offset : number, value : number) : void
+  - Writes the given number to the buffer at the specified offset.
+  - f32 writes 4 bytes, and f64 writes 8 bytes.
+  - f64 preserves all precision of the number, while f32 reduces precision somewhat.
+<br/>
+  
+</details>
 
 ## Library Extensions
 
