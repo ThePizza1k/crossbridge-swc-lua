@@ -62,7 +62,7 @@ Type checking is up to the user.
 
 ### luaReference.call(...) : Array
   - Equivalent to `ref(...)` in Lua.
-  - Does not trigger `__call` metamethods.
+  - Does trigger `__call` metamethods.
   - All args are converted to Lua equivalents, if possible.
   - Returns an array, where arr[0] is the error code. (See https://www.lua.org/manual/5.2/manual.html#lua_pcall for error codes)
     - If there is no error, arr[0] == 0, and remaining elements of the array are the functions return values.
