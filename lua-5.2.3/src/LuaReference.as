@@ -262,7 +262,7 @@ package crossbridge.lua{
 		
 		/*
 			Equivalent to ref(...) in Lua.
-			I don't think this triggers __call metamethod...
+			Can trigger __call metamethod.
 			
 			args are converted to lua-side equivalents.
       
