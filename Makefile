@@ -65,7 +65,7 @@ swc:
 	cd lua-5.2.3 && make FLASCC="$(call unixpath,$(FLASCC))" NP_FLASCC="$(call nativepath,$(FLASCC))" OPT_FLAGS="$(OPT_CFLAGS) $(EXTRACFLAGS)" flash
 
 swf: 
-	$(FLEX)/bin/mxmlc -library-path+=release/crossbridge-lua.swc src/main/actionscript/Test.as src/main/actionscript/Main.as -warnings -debug=false -o build/Main.swf
+	$(FLEX)/bin/mxmlc -library-path+=release/crossbridge-lua.swc -source-path=src/main/actionscript/ src/main/actionscript/Main.as -warnings -debug=false -o build/Main.swf
 
 clean:
 	cd lua-5.2.3 && make clean
