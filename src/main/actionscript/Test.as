@@ -2,6 +2,7 @@ package{
 	import crossbridge.lua.CModule;
 	import crossbridge.lua.LuaState;
 	import crossbridge.lua.LuaReference;
+	import crossbridge.lua.LuaMultipleReturn;
 	import flash.media.Sound;
 	import flash.utils.ByteArray;
 
@@ -56,7 +57,12 @@ package{
 			}
 			return newBytes;
 		}
-
+		
+		public static function getValues() : LuaMultipleReturn
+		{
+			return new LuaMultipleReturn(1, 2, 5, "Awesome!", 3);
+		}
+		
 		public static function playBytesAsSound(byteArr : ByteArray) : void
 		{
 			byteArr.position = 0;

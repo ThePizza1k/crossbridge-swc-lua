@@ -37,6 +37,12 @@ package_as3(
 	"import flash.utils.Dictionary;\n"
 	"public var __lua_objrefs:Dictionary = new Dictionary();\n" // Keep track of object references from lua
 	"public var __lua_typerefs:Dictionary = new Dictionary();\n" // Keep track of types we may want to convert, via their constructors.
+	"public class LuaMultipleReturn {\n"
+	"  public var vals:Array;\n"
+	"  public function LuaMultipleReturn(... args){\n"
+	"    this.vals = args;\n"
+	"  }\n"
+	"}"
 );
 
 package_as3(
@@ -469,10 +475,10 @@ static int flash_closure_apply (lua_State *L) {
 				: "r"(getMainThread(L))
 			);
 			if (t_ref != LUA_NOREF) {
-				lua_rawgeti(L, LUA_REGISTRYINDEX, t_ref);
+				lua_rawgeti(L, LUA_REGISTRYINDEX, t_ref); // function (At index 2?)
 				lua_pushvalue(L,-2);
-				lua_pcall(L, 1, 1, 0);
-				lua_replace(L,-2);
+				lua_pcall(L, 1, LUA_MULTRET, 0);
+				return lua_gettop(L) - 1;
 			}
 			break;
 	}
@@ -684,10 +690,10 @@ static int flash_metacall (lua_State *L) {
 				: "r"(getMainThread(L))
 			);
 			if (t_ref != LUA_NOREF) {
-				lua_rawgeti(L, LUA_REGISTRYINDEX, t_ref);
+				lua_rawgeti(L, LUA_REGISTRYINDEX, t_ref); // function (At index 2?)
 				lua_pushvalue(L,-2);
-				lua_pcall(L, 1, 1, 0);
-				lua_replace(L,-2);
+				lua_pcall(L, 1, LUA_MULTRET, 0);
+				return lua_gettop(L) - 1;
 			}
 			break;
 	}
@@ -1089,6 +1095,20 @@ LUALIB_API void luaL_registerAS3Conversion(lua_State *L, const char *className) 
 	inline_as3("__lua_typerefs[%0][clz] = %1;\n" : : "r"(L), "r"(ref));
 }
 
+static int flash_convertArrayToReturns(lua_State *L){
+	FlashObj* obj = (FlashObj*) lua_touserdata(L, 1);
+	lua_pop(L, 1);
+	inline_as3(
+  "var arr:Array = (__lua_objrefs[%0] as LuaMultipleReturn).vals;\n"
+	"for (var i:int = 0; i < arr.length; i++) {\n"
+	"  pushAS3(%1, arr[i]);\n"
+	"}\n"
+	:
+	: "r"((int) obj), "r"((int) L)
+  );
+	return lua_gettop(L);
+}
+
 static int flash_getclass (lua_State *L){
 	size_t l;
 	const char *s1 = luaL_checklstring(L, 1, &l);
@@ -1221,5 +1241,9 @@ LUAMOD_API int luaopen_flash (lua_State *L) {
 	lua_atpanic(L, flash_panic);
 
 	inline_as3("import flash.utils.Dictionary; __lua_typerefs[%0] = new Dictionary();\n" : : "r"(L));
+	
+	lua_pushcfunction(L, flash_convertArrayToReturns);
+	luaL_registerAS3Conversion(L,"crossbridge.lua.LuaMultipleReturn");
+	
 	return 1;
 }
