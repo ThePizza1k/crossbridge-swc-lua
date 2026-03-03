@@ -88,4 +88,17 @@ Type checking is up to the user.
 ### luaReference.setMetatable(tab : LuaReference) : void
   - Sets the metatable of the given Lua object to the given table.
 
-todo: document everything else
+### luaReference.getPairs() : Vector.<Array>
+  - Returns a Vector.<Array> representing the pairs of the table.
+  - Each Array has two items: `[key, value]`
+  - This can generate new LuaReference items that would later need cleared.
+
+### luaReference.getData(maxDepth : int = 16) : Vector.<Array>
+  - Returns a Vector.<Array> representing the pairs of the table, like getPairs.
+  - Non-data portions are cut (functions, threads, un-convertible userdata, etc)
+  - Tables are recursively converted to Vector.<Array>
+  - Can take a max depth parameter to cut off recursion.
+
+### luaReference.setFields(pairs : Vector.<Array>) : void
+  - Takes a Vector.<Array> representing the pairs to set, and sets them.
+  - See getPairs/getData for format.
