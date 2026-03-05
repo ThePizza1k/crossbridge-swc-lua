@@ -113,6 +113,7 @@ In this section, `RNG` is used as a standin for any arbitrary RNG object.
 ## Buffer Library
 
 The buffer library allows the creation and usage of fixed size, mutable blocks of memory.
+This library is modeled after luau's buffer library, but has some differences. (Most notably, this uses big-endian order)
 
 <details>
 <summary>Buffer functions</summary>
