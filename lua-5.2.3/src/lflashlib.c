@@ -37,10 +37,9 @@ package_as3(
 	"import flash.utils.Dictionary;\n"
 	"public var __lua_objrefs:Dictionary = new Dictionary();\n" // Keep track of object references from lua
 	"public var __lua_typerefs:Dictionary = new Dictionary();\n" // Keep track of types we may want to convert, via their constructors.
-	"public class LuaMultipleReturn {\n"
-	"  public var vals:Array;\n"
-	"  public function LuaMultipleReturn(... args){\n"
-	"    this.vals = args;\n"
+	"public dynamic class LuaResultArray extends Array {\n"
+	"  public function LuaResultArray(... args){\n"
+	"    this.push.apply(this, args);\n"
 	"  }\n"
 	"}"
 );
@@ -1099,7 +1098,7 @@ static int flash_convertArrayToReturns(lua_State *L){
 	FlashObj* obj = (FlashObj*) lua_touserdata(L, 1);
 	lua_pop(L, 1);
 	inline_as3(
-  "var arr:Array = (__lua_objrefs[%0] as LuaMultipleReturn).vals;\n"
+  "var arr:LuaResultArray = __lua_objrefs[%0] as LuaResultArray;\n"
 	"for (var i:int = 0; i < arr.length; i++) {\n"
 	"  pushAS3(%1, arr[i]);\n"
 	"}\n"
@@ -1243,7 +1242,7 @@ LUAMOD_API int luaopen_flash (lua_State *L) {
 	inline_as3("import flash.utils.Dictionary; __lua_typerefs[%0] = new Dictionary();\n" : : "r"(L));
 	
 	lua_pushcfunction(L, flash_convertArrayToReturns);
-	luaL_registerAS3Conversion(L,"crossbridge.lua.LuaMultipleReturn");
+	luaL_registerAS3Conversion(L,"crossbridge.lua.LuaResultArray");
 	
 	return 1;
 }
