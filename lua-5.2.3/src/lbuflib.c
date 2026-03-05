@@ -331,6 +331,124 @@ static int buf_copy(lua_State *L) { // buffer.copy(target: buffer, targetOffset:
 	return 0;
 }
 
+static int buf_readbits(lua_State *L) { // Based off of luau's implementation.
+	buffer_check(L, 1);
+	struct buffer *targetBuffer = (struct buffer*) lua_touserdata(L, 1);
+	int bit_offset = luaL_checkinteger(L, 2);
+	int bit_count = luaL_checkinteger(L, 3);
+	
+	if (bit_offset < 0) {return luaL_argerror(L, 2, "attempted out of range buffer access");}
+	if (bit_count > 48 || bit_count < 0) {return luaL_argerror(L, 3, "bit count is out of range of [0, 48]");}
+	
+	int start_byte = bit_offset >> 3; // right shift by 3 (to divide by 8)
+	int end_byte = (bit_offset + bit_count + 7) >> 3; // This end_byte is not actually read that's why 7 is added.
+	
+	range_check(L, start_byte, targetBuffer->length, end_byte - start_byte);
+	uint64_t data = 0;
+	
+	uint8_t *bytes = targetBuffer->bytes;
+	
+	int byte;
+	for (byte = start_byte; byte < end_byte; byte++){
+		data = (data << 8) + bytes[byte];
+	}
+	
+	int subbyte_offset = (8-((bit_count + bit_offset) & 0x7)) & 0x7; // See reasoning under buf_writebits
+	
+	uint64_t mask = (1ULL << bit_count) - 1;
+	
+	lua_pushnumber(L, (double) ((data >> subbyte_offset) & mask));
+	return 1;
+}
+
+static int buf_writebits(lua_State *L) { // Based off of luau's implementation.
+	buffer_check(L, 1);
+	
+	struct buffer *targetBuffer = (struct buffer*) lua_touserdata(L, 1);
+	int bit_offset = luaL_checkinteger(L, 2);
+	int bit_count = luaL_checkinteger(L, 3);
+	uint64_t value = (uint64_t) luaL_checknumber(L, 4);
+	
+	if (bit_offset < 0) {return luaL_argerror(L, 2, "attempted out of range buffer access");}
+	if (bit_count > 48 || bit_count < 0) {return luaL_argerror(L, 3, "bit count is out of range of [0, 48]");}
+	
+	int start_byte = bit_offset >> 3; // left shift by 3 (to divide by 8)
+	int end_byte = (bit_offset + bit_count + 7) >> 3; // This end_byte is not actually read that's why 7 is added.
+	
+	range_check(L, start_byte, targetBuffer->length, end_byte - start_byte);
+	uint64_t data = 0;
+	
+	uint8_t *bytes = targetBuffer->bytes;
+	
+	int byte;
+	for (byte = start_byte; byte < end_byte; byte++){ // read in data.
+		data = (data << 8) + bytes[byte];
+	}
+	
+	int subbyte_offset = (8-((bit_count + bit_offset) & 0x7)) & 0x7; // Reasoning for this line is below.
+	
+	uint64_t mask = ((1ULL << bit_count) - 1) << subbyte_offset;
+	
+	data = (data & ~mask) | ((value << subbyte_offset) & mask);
+	
+	lua_pushunsigned(L,mask);
+	
+	for (byte = end_byte - 1; byte >= start_byte; byte--){
+		bytes[byte] = data & 0xff;
+		data >>= 8;
+	}
+	
+	return 1;
+}
+
+/* thinking
+
+write 10 bits: 0b1001001001
+offset 0:
+|00000000|00000000|00000000|00000000|
+|10010010|01000000|00000000|00000000|
+Left shift by 6
+
+size + off = 10, 10%8 = 2, 8 - 2 % 8 = 6
+
+write 10 bits: 0b1001001001
+offset 6:
+|00000000|00000000|00000000|00000000|
+|00000010|01001001|00000000|00000000|
+Left shift by 0.
+
+size + off = 16, 16%8 = 0, 8 - 2 % 8 = 0
+
+*/
+
+/* Awesome test code!
+local buf = buffer.new(65536)
+
+math.randomseed(61631)
+
+local off = 6
+local v = math.random(0,2^12 - 1)
+print(v)
+buf:writebits(off, 12, v)
+
+print(buf:readbits(off, 12))
+
+print()
+
+local v2 = buf:readu32(0)
+local str = ""
+local str2 = ""
+for i = 31, 0, -1 do
+  str = str .. bit32.extract(v2, i, 1)
+  if i < 12 then
+    str2 = str2 .. bit32.extract(v, i, 1)
+  end
+end
+
+print(str)
+print(str2)
+*/
+
 static int buf_length(lua_State *L) {
 	buffer_check(L, 1);
 	struct buffer *buf = (struct buffer*) lua_touserdata(L,1);
@@ -437,6 +555,8 @@ static const luaL_Reg buflib[] = {
 	{"readf64",         buf_readf64},
 	{"readstring",   buf_readstring},
 	{"writestring", buf_writestring},
+	{"readbits",       buf_readbits},
+	{"writebits",     buf_writebits},
 	{"fill",               buf_fill},
 	{"copy",               buf_copy},
 	{"len",              buf_length},
