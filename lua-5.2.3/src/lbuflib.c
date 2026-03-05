@@ -346,7 +346,7 @@ static int buf_readbits(lua_State *L) { // Based off of luau's implementation.
 	range_check(L, start_byte, targetBuffer->length, end_byte - start_byte);
 	uint64_t data = 0;
 	
-	uint8_t *bytes = targetBuffer->bytes;
+	uint8_t *bytes = (uint8_t*) targetBuffer->bytes;
 	
 	int byte;
 	for (byte = start_byte; byte < end_byte; byte++){
@@ -378,7 +378,7 @@ static int buf_writebits(lua_State *L) { // Based off of luau's implementation.
 	range_check(L, start_byte, targetBuffer->length, end_byte - start_byte);
 	uint64_t data = 0;
 	
-	uint8_t *bytes = targetBuffer->bytes;
+	uint8_t *bytes = (uint8_t*) targetBuffer->bytes;
 	
 	int byte;
 	for (byte = start_byte; byte < end_byte; byte++){ // read in data.
