@@ -175,6 +175,16 @@ In this section, `buf` is used as a standin for any arbitrary buffer object.
   - f64 preserves all precision of the number, while f32 reduces precision somewhat.
 <br/>
 
+### buffer.readbits(b : buffer, bitOffset : number, bitCount : number) : number
+  - Reads bitCount bits from the buffer, starting at bitOffset, as an unsigned integer.
+  - bitOffset is an offset in bits, rather than bytes like the other read/write functions.
+  - bitCount must be in range [0, 48]
+
+### buffer.writebits(b : buffer, bitOffset : number, bitCount : number, value : number) : void
+  - Writes bitCount bits into the buffer, starting at bitOffset, from an unsigned integer.
+  - bitOffset is an offset in bits, rather than bytes like the other read/write functions.
+  - bitCount must be in range [0, 48]
+
 ### buffer.readstring(b : buffer, offset : number, count : number) : string
   - Reads a string of length 'count' from the buffer, starting from the specified offset.
   - Not null terminated.
