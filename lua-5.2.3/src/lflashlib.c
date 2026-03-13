@@ -146,12 +146,48 @@ static int FlashObj_tostring(lua_State *L)
 	return 1;
 }
 
+static int FlashObj_pairsIter(lua_State *L){ // Called repeatedly to produce key, value pairs.
+  FlashObj *obj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(1)); // Guaranteed to be flash userdata.
+	int thisIndex = lua_tointeger(L, lua_upvalueindex(2));
+	int newIndex;
+	inline_as3(
+	  "import avm2.intrinsics.iteration.*;\n"
+		"var obj:Object = __lua_objrefs[%1];\n"
+	  "%0 = hasnext(obj, %2);\n"
+	  : "=r"(newIndex)
+	  : "r"((int) obj), "r"(thisIndex)
+	);
+	lua_pushinteger(L, newIndex);
+	lua_replace(L, lua_upvalueindex(2));
+	inline_as3(
+		"import avm2.intrinsics.iteration.*;\n"
+		"pushAS3(%0, nextname(obj, %1));\n"
+		"pushAS3(%0, nextvalue(obj, %1));\n"
+		:
+		: "r"((int) L), "r"(newIndex)
+	);
+  return 2;	
+}
+
+static int FlashObj_pairs(lua_State *L)
+{
+	// We return 3 things. FlashObj_pairsIter (closure w/ object), nil, nil.
+	// Push flash object. Push index 0. go.
+	lua_pushvalue(L, 1);
+	lua_pushinteger(L, 0);
+	lua_pushcclosure(L, FlashObj_pairsIter, 2);
+	lua_pushnil(L);
+	lua_pushnil(L);
+	return 3;
+}
+
 static const luaL_Reg FlashObj_meta[] = {
 	{"__gc",        FlashObj_gc},
 	{"__tostring",  FlashObj_tostring},
 	{"__index",     flash_safegetprop},
 	{"__newindex",  flash_safesetprop},
-	{"__call",    flash_metacall},
+	{"__call",      flash_metacall},
+	{"__pairs",     FlashObj_pairs},
 	
 	{NULL, NULL}
 };
@@ -1151,6 +1187,25 @@ static int flash_panic(lua_State *L) { // Replace Lua panic function with AS3 er
 }
 
 
+static int flash_checkRuffleBug(lua_State *L) {
+	unsigned long long v1 = 0xBF58476D1CE4E5B9ULL;
+	unsigned long long v2 = 0x94D049BB133111EBULL;
+	unsigned long long exp = 0x42D4E4146CC929D3ULL;
+	// Trick the compiler :trolling:
+	void* pv1 = lua_newuserdata(L, sizeof(unsigned long long));
+	void* pv2 = lua_newuserdata(L, sizeof(unsigned long long));
+	memcpy(pv1, &v1, sizeof(unsigned long long));
+	memcpy(pv2, &v2, sizeof(unsigned long long));
+	lua_pushcfunction(L, flash_gettimer);
+	lua_call(L, 0, 1);
+	lua_pop(L, 1);
+	memcpy(&v1, pv1, sizeof(unsigned long long));
+	memcpy(&v2, pv2, sizeof(unsigned long long));
+	// Done tricking the compiler.
+	lua_pushboolean(L, exp != (v1 * v2));
+	return 1;
+}
+
 
 // ===============================================================
 //                          Registration
@@ -1208,6 +1263,8 @@ static const luaL_Reg flashlib[] = {
 	{"type", flash_type},
 	{"registerConversion", flash_register},
 	{"getclass", flash_getclass},
+	
+	{"checkRuffleBug", flash_checkRuffleBug},
 
 	{NULL, NULL}
 };

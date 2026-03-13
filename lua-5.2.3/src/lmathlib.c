@@ -16,6 +16,8 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+#include "AS3/AS3.h"
+
 
 #undef PI
 #define PI	((lua_Number)(3.1415926535897932384626433832795))
