@@ -62,22 +62,39 @@ package_as3(
 	"    } else if (obj == null) {\n"
 	"      Lua.lua_pushnil(L);\n"
 	"    } else {\n"
-	"		   if (__lua_objrefs[obj] == undefined) {\n"
+	"      if (__lua_objrefs[obj] == undefined) {\n"
 	"        var udptr:int = Lua.push_flashref(L);\n"
 	"        __lua_objrefs[udptr] = obj;\n"
 	"        __lua_objrefs[obj] = udptr;\n"
-	"			 	 Lua.luaL_getsubtable(L, -1001000, \"flash_refs\");"
-	"				 Lua.lua_pushvalue(L,-2);"
-	"				 Lua.lua_rawseti(L,-2, udptr);"
-	"				 Lua.lua_pop(L,1);"
+	"        Lua.luaL_getsubtable(L, -1001000, \"flash_refs\");"
+	"        Lua.lua_pushvalue(L,-2);"
+	"        Lua.lua_rawseti(L,-2, udptr);"
+	"        Lua.lua_pop(L,1);"
 	"      } else {\n"
 	"        Lua.luaL_getsubtable(L, -1001000, \"flash_refs\");\n"
 	"        Lua.lua_rawgeti(L, -1, __lua_objrefs[obj]);\n"
 	"	       Lua.lua_replace(L, -2);\n"
+	"        if (Lua.lua_type(L, -1) == 0) {\n" // Apparently this can happen.
+	"          Lua.lua_pop(L,1);\n"
+	"          var udptr2:int = Lua.push_flashref(L);\n"
+	"          __lua_objrefs[udptr2] = obj;\n"
+	"          __lua_objrefs[obj] = udptr2;\n"
+	"          Lua.luaL_getsubtable(L, -1001000, \"flash_refs\");"
+	"          Lua.lua_pushvalue(L,-2);"
+	"          Lua.lua_rawseti(L,-2, udptr2);"
+	"          Lua.lua_pop(L,1);"
+	"        }\n"
+	"      }\n"
+	"      if (obj.constructor in __lua_typerefs[L]) {\n"
+	"        Lua.lua_rawgeti(L, -1001000, __lua_typerefs[L][obj.constructor]);\n"
+	"        Lua.lua_pushvalue(L, -2);\n"
+	"        Lua.lua_pcallk(L, 1, 1, 0, 0, null);\n"
+	"        Lua.lua_replace(L, -2);\n"
 	"      }\n"
 	"    }\n"
 	"}"
 );
+
 
 #define FlashObjectType "flash"
 #define FlashObj unsigned int
@@ -146,16 +163,76 @@ static int FlashObj_tostring(lua_State *L)
 	return 1;
 }
 
+static int FlashObj_emptyIter(lua_State *L){
+	lua_pushnil(L);
+	lua_pushnil(L);
+	return 2;
+}
+
+static int FlashObj_ipairsIter(lua_State *L){ // Called repeatedly to produce key, value pairs.
+	FlashObj *obj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(1)); // Guaranteed to be flash userdata.
+	int thisIndex = lua_tointeger(L, lua_upvalueindex(2));
+	int thisValid = 0;
+	inline_as3(
+		"var obj:Object = __lua_objrefs[%2];\n"
+		"%0 = (int) (%1 < obj.length);\n"
+		: "=r"(thisValid)
+		: "r"(thisIndex), "r"((int)obj)
+	);
+	if (thisValid != 0) {
+		lua_pushinteger(L, thisIndex + 1);
+		lua_replace(L, lua_upvalueindex(2)); // Increment thisIndex closure.
+		lua_pushinteger(L, thisIndex);
+		inline_as3(
+			"pushAS3(%0, obj[%1]);\n"
+			:
+			: "r"((int) L), "r"(thisIndex)
+		);
+	} else {
+		lua_pushnil(L);
+		lua_pushnil(L);
+	}
+	return 2;
+}
+
+static int FlashObj_ipairs(lua_State *L)
+{
+	FlashObj *obj = (FlashObj*) lua_touserdata(L, 1); // Guaranteed to be flash userdata. I think.
+	// We return 3 things. FlashObj_pairsIter (closure w/ object), nil, nil.
+	// Push flash object. Push index 0. go.
+	int canIterate = 0; // 1 if can iterate.
+  inline_as3(
+		"var obj:Object = __lua_objrefs[%1];\n"
+		"%0 = (int)(obj is Array\n"
+		" || obj is Vector.<*> \n"
+    " || obj is Vector.<Number>\n"
+    " || obj is Vector.<int>\n"
+    " || obj is Vector.<uint>);\n"
+		: "=r"(canIterate)
+		: "r"((int) obj)
+	);
+	if (canIterate != 0) {
+		lua_pushvalue(L, 1);
+		lua_pushinteger(L, 0);
+		lua_pushcclosure(L, FlashObj_ipairsIter, 2);
+	} else {
+		lua_pushcfunction(L, FlashObj_emptyIter);
+	}
+	lua_pushnil(L);
+	lua_pushnil(L);
+	return 3;
+}
+
 static int FlashObj_pairsIter(lua_State *L){ // Called repeatedly to produce key, value pairs.
-  FlashObj *obj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(1)); // Guaranteed to be flash userdata.
+	FlashObj *obj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(1)); // Guaranteed to be flash userdata.
 	int thisIndex = lua_tointeger(L, lua_upvalueindex(2));
 	int newIndex;
 	inline_as3(
-	  "import avm2.intrinsics.iteration.*;\n"
+		"import avm2.intrinsics.iteration.*;\n"
 		"var obj:Object = __lua_objrefs[%1];\n"
-	  "%0 = hasnext(obj, %2);\n"
-	  : "=r"(newIndex)
-	  : "r"((int) obj), "r"(thisIndex)
+		"%0 = hasnext(obj, %2);\n"
+		: "=r"(newIndex)
+		: "r"((int) obj), "r"(thisIndex)
 	);
 	lua_pushinteger(L, newIndex);
 	lua_replace(L, lua_upvalueindex(2));
@@ -166,11 +243,10 @@ static int FlashObj_pairsIter(lua_State *L){ // Called repeatedly to produce key
 		:
 		: "r"((int) L), "r"(newIndex)
 	);
-  return 2;	
+	return 2;
 }
 
-static int FlashObj_pairs(lua_State *L)
-{
+static int FlashObj_pairs(lua_State *L){
 	// We return 3 things. FlashObj_pairsIter (closure w/ object), nil, nil.
 	// Push flash object. Push index 0. go.
 	lua_pushvalue(L, 1);
@@ -181,6 +257,27 @@ static int FlashObj_pairs(lua_State *L)
 	return 3;
 }
 
+static int FlashObj_len(lua_State *L){
+	FlashObj *obj = (FlashObj*) lua_touserdata(L, 1);
+	int length = 0;
+  inline_as3(
+		"var obj:Object = __lua_objrefs[%1];\n"
+		"if	(obj is Array\n"
+		" || obj is Vector.<*> \n"
+    " || obj is Vector.<Number>\n"
+    " || obj is Vector.<int>\n"
+    " || obj is Vector.<uint>) {\n"
+		"  %0 = obj.length;\n"
+		"} else {\n"
+		"  %0 = 0;\n"
+		"}\n"
+		: "=r"(length)
+		: "r"((int) obj)
+	);
+	lua_pushinteger(L, length);
+	return 1;
+}
+
 static const luaL_Reg FlashObj_meta[] = {
 	{"__gc",        FlashObj_gc},
 	{"__tostring",  FlashObj_tostring},
@@ -188,6 +285,8 @@ static const luaL_Reg FlashObj_meta[] = {
 	{"__newindex",  flash_safesetprop},
 	{"__call",      flash_metacall},
 	{"__pairs",     FlashObj_pairs},
+	{"__ipairs",    FlashObj_ipairs},
+	{"__len",       FlashObj_len},
 	
 	{NULL, NULL}
 };
@@ -1036,7 +1135,7 @@ static int flash_toobject (lua_State *L) {
 				case LUA_TTHREAD: // Tables get converted too, but not these.
 				case LUA_TFUNCTION:
 				{
-					lua_pop(L, 1); // Just do nothing with these...
+					// Just do nothing with these...
 					break;
 				}
 				case LUA_TUSERDATA:
@@ -1091,7 +1190,6 @@ static int flash_toobject (lua_State *L) {
 	}
 	// Push object reference
 	FlashObj *result = push_newflashref(L);
-
 	// Get the prop, and store it with the new key
 	inline_as3("__lua_objrefs[%0] = object;\n" : : "r"(result));
 	inline_as3("__lua_objrefs[object] = %0;\n" : : "r"(result));
