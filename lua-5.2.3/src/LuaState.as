@@ -49,6 +49,16 @@ package crossbridge.lua
 					Lua.luaL_getsubtable(L, LuaEnums.LUA_REGISTRYINDEX, "flash_refs");
 					Lua.lua_rawgeti(L, -1, __lua_objrefs[obj]); // Retrieve a reference
 					Lua.lua_replace(L, -2);
+					if (Lua.lua_type(L, -1) == LuaEnums.LUA_TNIL) { // this can happen.
+						Lua.lua_pop(L,1);
+						var udptr2:int = Lua.push_flashref(L);
+						__lua_objrefs[udptr2] = obj;
+						__lua_objrefs[obj] = udptr2;
+						Lua.luaL_getsubtable(L, LuaEnums.LUA_REGISTRYINDEX, "flash_refs");
+						Lua.lua_pushvalue(L, -2);
+						Lua.lua_rawseti(L, -2, udptr2);
+						Lua.lua_pop(L,1);
+					}
 				}
 				if (obj.constructor in __lua_typerefs[L]) {
 					Lua.lua_rawgeti(L, LuaEnums.LUA_REGISTRYINDEX, __lua_typerefs[L][obj.constructor]);

@@ -60,6 +60,16 @@ package crossbridge.lua{
 					Lua.luaL_getsubtable(L, LuaEnums.LUA_REGISTRYINDEX, "flash_refs");
 					Lua.lua_rawgeti(L, -1, __lua_objrefs[obj]); // Retrieve a reference
 					Lua.lua_replace(L, -2);
+					if (Lua.lua_type(L, -1) == LuaEnums.LUA_TNIL) { // this can happen.
+						Lua.lua_pop(L,1);
+						var udptr2:int = Lua.push_flashref(L);
+						__lua_objrefs[udptr2] = obj;
+						__lua_objrefs[obj] = udptr2;
+						Lua.luaL_getsubtable(L, LuaEnums.LUA_REGISTRYINDEX, "flash_refs");
+						Lua.lua_pushvalue(L, -2);
+						Lua.lua_rawseti(L, -2, udptr2);
+						Lua.lua_pop(L,1);
+					}
 				}
 				if (obj.constructor in __lua_typerefs[L]) {
 					Lua.lua_rawgeti(L, LuaEnums.LUA_REGISTRYINDEX, __lua_typerefs[L][obj.constructor]);
@@ -69,7 +79,8 @@ package crossbridge.lua{
 				}
 			}
 		}
-		
+
+
 		private static function getAS3(L:int, ind:int):Object
 		{
 			var t:int = Lua.lua_type(L,ind);
@@ -133,6 +144,23 @@ package crossbridge.lua{
 					Lua.lua_pushvalue(L,ind);
 					var ref:int = Lua.luaL_ref(L, LuaEnums.LUA_REGISTRYINDEX);
 					return new LuaReference(L, ref);
+				case (LuaEnums.LUA_TUSERDATA):
+					var ptr:int = Lua.lua_touserdata(L,ind);
+					if (__lua_objrefs[ptr] != null) {
+						return __lua_objrefs[ptr];
+					} else {
+						if (ind < 0) {ind = Lua.lua_gettop(L) + ind + 1;}
+						var converts:int = Lua.luaL_getmetafield(L, ind, "__as3");
+						if (converts != 0) {
+							Lua.lua_pushvalue(L, ind);
+							Lua.lua_callk(L, 1, 1, 0, null); // lua_call does not exist because swig is stupid idk.
+							var obj:Object = __lua_objrefs[Lua.lua_touserdata(L,ind)];
+							Lua.lua_pop(L, 1);
+							return obj;
+						} else { // Doesn't convert.
+							return null;
+						}
+					}
 				default:
 					return null;
 			}
