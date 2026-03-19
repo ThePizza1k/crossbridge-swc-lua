@@ -7321,6 +7321,7 @@ The possible results of this function are
 "<code>function</code>",
 "<code>thread</code>",
 and "<code>userdata</code>".
+If <code>v</code> is a <code>userdata</code>, and the <code>"__type"</code> metafield is present, then that value will be returned instead.
 
 
 
@@ -8377,6 +8378,26 @@ and the default for <code>j</code> is <code>#list</code>.
 If <code>i</code> is greater than <code>j</code>, returns the empty string.
 
 
+<p>
+<hr><h3><a name="pdf-table.create"><code>table.create ([narr [, nrec]])</code></a></h3>
+
+
+<p>
+Creates an empty table.
+<code>narr</code> is a hint for the number of elements the table will have as a sequence.
+<code>nrec</code> is a hint for the number of other elements the table will have.
+Lua may use these hints to preallocate memory, potentially providing a performance boost.
+
+
+<p>
+<hr><h3><a name="pdf-table.find"><code>table.find (t, v [, pos])</code></a></h3>
+
+
+<p>
+Returns the index of the first element in <code>t</code> equal to <code>v</code>, or <b>nil</b> if no such element is found.
+The search starts at <code>pos</code> if specified, or 1 otherwise.
+The search stops at the first <b>nil</b>.
+
 
 
 <p>
@@ -8539,6 +8560,15 @@ quadrant of the result.
 
 <p>
 Returns the smallest integer larger than or equal to <code>x</code>.
+
+
+
+<p>
+<hr><h3><a name="pdf-math.clamp"><code>math.clamp (x, min, max)</code></a></h3>
+
+
+<p>
+Returns the value of <code>x</code> clamped to the range <em>[min, max]</em>.
 
 
 
@@ -8745,6 +8775,23 @@ Sets <code>x</code> as the "seed"
 for the pseudo-random generator:
 equal seeds produce equal sequences of numbers.
 
+<p>
+<hr><h3><a name="pdf-math.round"><code>math.round (x)</code></a></h3>
+
+
+<p>
+Returns <code>x</code> rounded to the nearest integer.
+If <code>x</code> is halfway between two integers, rounds away from zero.
+
+
+<p>
+<hr><h3><a name="pdf-math.sign"><code>math.sign (x)</code></a></h3>
+
+
+<p>
+Returns <code>-1</code> if <code>x</code> is negative, 
+<code>1</code> if <code>x</code> is positive, 
+or <code>0</code> otherwise.
 
 
 
@@ -10039,8 +10086,342 @@ refer to the <code>n2</code>-th upvalue of the Lua closure <code>f2</code>.
 
 
 
+<h2>6.11 &ndash; <a name="6.11">The Random Library</a></h2>
+
+<p>
+This library allows the creation of RNG objects, which can be used to generate random numbers. Each RNG object has its own state, independent of all others.<br><br>
+In this section, <code>RNG</code> is used as a standin for any arbitrary RNG object.<br><br>
+Note that functions from an RNG object are closures, and thus do not need to be provided with their respective RNG object.<br><br>
+
+Currently, RNG objects use xoshiro256+ to generate random numbers.<br><br>
+
+<code>tostring(RNG)</code> returns <code>"(RNG : {ptr})"</code>, where <code>{ptr}</code> is replaced with the objects location in memory.<br>
+<code>type(RNG)</code> returns <code>"random"</code>.<br>
+
+<p>
+<hr><h3><a name="pdf-random.clone"><code>random.clone (rng)</code></a></h3>
 
 
+<p>
+Returns a new RNG object with an identical state to the provided RNG object.
+
+<p>
+<hr><h3><a name="pdf-random.new"><code>random.new ([seed])</code></a></h3>
+
+
+<p>
+Returns a new RNG object, seeded with the given seed. All bits of the seed are used.
+If no seed is provided, one is generated using AS3 <code>Math.random();</code>
+
+<p>
+<hr><h3><a name="pdf-random.swap"><code>random.swap (rng1, rng2)</code></a></h3>
+
+
+<p>
+Swaps the internal states of the two RNG objects.
+
+<p>
+<hr><h3><a name="pdf-rng.getseed"><code>RNG.getseed ()</code></a></h3>
+
+
+<p>
+Returns the last seed used to seed the RNG object.
+
+<p>
+<hr><h3><a name="pdf-rng.random"><code>RNG.random ([m [, n]])</code></a></h3>
+
+
+<p>
+Equivalent to <code>math.random([m [, n]])</code>, but the returned value is based on the RNG object's internal state.
+The random number is generated with 52 random bits.
+
+<p>
+<hr><h3><a name="pdf-rng.randomseed"><code>RNG.randomseed ([seed])</code></a></h3>
+
+
+<p>
+Seeds the RNG object, using the same semantics as <code>random.new</code>.
+
+
+
+<h2>6.12 &ndash; <a name="6.12">The Buffer Library</a></h2>
+This library allows the creation and usage of fixed size, mutable blocks of memory. <br>
+Unlike tables and strings, buffers start from an offset of 0, and valid addresses go up to <code>#buf - 1</code>. <br>
+The buffer library provides all of its functions in the table <code>buffer</code>. It also sets a metatable for buffers where the <code>__index</code> field points to the <code>buffer</code> table.
+Therefore, many buffer functions can be used in an object-oriented style. For instance, <code>buffer.readf32(buf, 4)</code> can be written as <code>buf:readf32(4)</code>. <br>
+The buffer library uses big-endian ordering. <br>
+Any operation that would go outside of the bounds of the buffer throws an error.<br><br>
+
+<code>tostring(buf)</code> returns <code>"buffer: {ptr}"</code>, where <code>{ptr}</code> is replaced with the objects location in memory.<br>
+<code>type(buf)</code> returns <code>"buffer"</code>.<br>
+
+<p>
+<hr><h3><a name="pdf-buffer.copy"><code>buffer.copy (dest, destOffset, source [, sourceOffset [, count]])</code></a></h3>
+
+
+<p>
+Copies data from the source buffer to the destination buffer.
+Data is copied to the destination starting at the destination offset.
+Data is copied from source starting at the provided sourceOffset, or 0 if none is provided.
+If a count is not specified, copies the entire rest of the source buffer. Otherwise, only the specified number of bytes is copied.
+
+<p>
+<hr><h3><a name="pdf-buffer.fill"><code>buffer.fill (buf, offset, value [, count])</code></a></h3>
+
+
+<p>
+Fills a buffer with the given byte value, starting from the offset. 
+If a count is specified, only writes that many bytes. Otherwise, writes to the end of the buffer.
+
+<p>
+<hr><h3><a name="pdf-buffer.fromstring"><code>buffer.fromstring (str)</code></a></h3>
+
+
+<p>
+Returns a new buffer containing the string's contents. The buffer will be the same length as the string. The size cannot exceed 16777216 bytes.
+
+<p>
+<hr><h3><a name="pdf-buffer.len"><code>buffer.len (buf)</code></a></h3>
+
+
+<p>
+Returns the length of the given buffer.
+This is equivalent to <code>#buf</code>.
+
+<p>
+<hr><h3><a name="pdf-buffer.new"><code>buffer.new (size)</code></a></h3>
+
+
+<p>
+Returns a new buffer of the given size. The size cannot exceed 16777216 bytes.
+
+<p>
+<hr><h3><a name="pdf-buffer.readbits"><code>buffer.readbits (buf, bitOffset, bitCount)</code></a></h3>
+
+
+<p>
+Reads <code>bitCount</code> bits from the buffer, starting at <code>bitOffset</code>, as an unsigned integer.
+<code>bitOffset</code> is an offset in bits, rather than bytes like the other read/write functions.
+<code>bitCount</code> must be in the range <em>[0, 48]</em>.
+
+<p>
+<hr><h3><a name="pdf-buffer.readf32"><code>buffer.readf32 (buf, offset)</code></a></h3>
+
+
+<p>
+Reads 4 bytes starting at the offset as a 32-bit single precision float, and returns it.
+
+<p>
+<hr><h3><a name="pdf-buffer.readf64"><code>buffer.readf64 (buf, offset)</code></a></h3>
+
+
+<p>
+Reads 8 bytes starting at the offset as a 64-bit double precision float, and returns it.
+
+<p>
+<hr><h3><a name="pdf-buffer.readi8"><code>buffer.readi8 (buf, offset)</code></a></h3>
+
+
+<p>
+Reads the byte at the offset as a signed 8-bit integer in the range <em>[-128, 127]</em>, and returns it.
+
+<p>
+<hr><h3><a name="pdf-buffer.readi16"><code>buffer.readi16 (buf, offset)</code></a></h3>
+
+
+<p>
+Reads 2 bytes starting at the offset as a signed 16-bit integer in the range <em>[-32768, 32767]</em>, and returns it.
+
+<p>
+<hr><h3><a name="pdf-buffer.readi32"><code>buffer.readi32 (buf, offset)</code></a></h3>
+
+
+<p>
+Reads 4 bytes starting at the offset as a signed 32-bit integer in the range <em>[-2147483648, 2147483647]</em>, and returns it.
+
+<p>
+<hr><h3><a name="pdf-buffer.readstring"><code>buffer.readstring (buf, offset, count)</code></a></h3>
+
+
+<p>
+Reads a string of length <code>count</code> from the buffer, starting from <code>offset</code>, and returns it.
+
+<p>
+<hr><h3><a name="pdf-buffer.readu8"><code>buffer.readu8 (buf, offset)</code></a></h3>
+
+
+<p>
+Reads the byte at the offset as an unsigned 8-bit integer in the range <em>[0, 255]</em>, and returns it.
+
+<p>
+<hr><h3><a name="pdf-buffer.readu16"><code>buffer.readu16 (buf, offset)</code></a></h3>
+
+
+<p>
+Reads 2 bytes starting at the offset as an unsigned 16-bit integer in the range <em>[0, 65535]</em>, and returns it.
+
+<p>
+<hr><h3><a name="pdf-buffer.readu32"><code>buffer.readu32 (buf, offset)</code></a></h3>
+
+
+<p>
+Reads 4 bytes starting at the offset as an unsigned 32-bit integer in the range <em>[0, 4294967295]</em>, and returns it.
+
+<p>
+<hr><h3><a name="pdf-buffer.writebits"><code>buffer.writebits (buf, bitOffset, bitCount, value)</code></a></h3>
+
+
+<p>
+Writes <code>bitCount</code> bits into the buffer, starting at <code>bitOffset</code>, from an unsigned integer.
+<code>bitOffset</code> is an offset in bits, rather than bytes like the other read/write functions.
+<code>bitCount</code> must be in the range <em>[0, 48]</em>.
+
+<p>
+<hr><h3><a name="pdf-buffer.writef32"><code>buffer.writef32 (buf, offset, value)</code></a></h3>
+
+
+<p>
+Writes the given value to the buffer at the specified offset as a 4 byte single precision float.
+
+<p>
+<hr><h3><a name="pdf-buffer.writef64"><code>buffer.writef64 (buf, offset, value)</code></a></h3>
+
+
+<p>
+Writes the given value to the buffer at the specified offset as an 8 byte double precision float.
+
+<p>
+<hr><h3><a name="pdf-buffer.writei8"><code>buffer.writei8 (buf, offset, value)</code></a></h3>
+
+
+<p>
+Converts the value to a signed 8-bit integer in the range <em>[-128, 127]</em> and writes it to the buffer at the offset.
+
+
+<p>
+<hr><h3><a name="pdf-buffer.writei16"><code>buffer.writei16 (buf, offset, value)</code></a></h3>
+
+
+<p>
+Converts the value to a signed 16-bit integer in the range <em>[-32768, 32767]</em> and writes it to the buffer at the two bytes starting at the offset.
+
+
+<p>
+<hr><h3><a name="pdf-buffer.writei32"><code>buffer.writei32 (buf, offset, value)</code></a></h3>
+
+
+<p>
+Converts the value to a signed 32-bit integer in the range <em>[-2147483648, 2147483647]</em> and writes it to the buffer at the four bytes starting at the offset.
+
+
+<p>
+<hr><h3><a name="pdf-buffer.writestring"><code>buffer.writestring (buf, offset, string [, count])</code></a></h3>
+
+
+<p>
+Writes the given string to the buffer, starting at the specified offset.
+If a count is unspecified, writes the whole string. Otherwise, only writes <code>count</code> bytes of the string.
+
+<p>
+<hr><h3><a name="pdf-buffer.writeu8"><code>buffer.writeu8 (buf, offset, value)</code></a></h3>
+
+
+<p>
+Converts the value to an unsigned 8-bit integer in the range <em>[0, 255]</em> and writes it to the buffer at the offset.
+
+
+<p>
+<hr><h3><a name="pdf-buffer.writeu16"><code>buffer.writeu16 (buf, offset, value)</code></a></h3>
+
+
+<p>
+Converts the value to an unsigned 16-bit integer in the range <em>[0, 65535]</em> and writes it to the buffer at the two bytes starting at the offset.
+
+
+<p>
+<hr><h3><a name="pdf-buffer.writeu32"><code>buffer.writeu32 (buf, offset, value)</code></a></h3>
+
+
+<p>
+Converts the value to an unsigned 32-bit integer in the range <em>[0, 4294967295]</em> and writes it to the buffer at the four bytes starting at the offset.
+
+
+
+<h2>6.13 &ndash; <a name="6.13">The Flash Library</a></h2>
+This library provides some tools for interop with Actionscript 3. <br>
+The flash library provides all of its functions in the <code>flash</code> table. <br>
+This library contains some functions that are dangerous, and can be used to compromise memory safety, among other things. <br>
+Furthermore, some of its functions can throw an Actionscript 3 error, which cannot be caught by Lua.
+
+<p>
+<hr><h3><a name="pdf-flash.getclass"><code>flash.getclass (className)</code></a></h3>
+
+<p>
+This function is a wrapper for AS3 <code>getDefinitionByName(classname);</code>.
+The returned class bypasses the <code>registerConversion</code> system.
+This function is not safe for user code.
+
+
+<p>
+<hr><h3><a name="pdf-flash.gettimer"><code>flash.gettimer ()</code></a></h3>
+
+<p>
+This function is a wrapper for AS3 <code>getTimer();</code>.
+It returns the number of milliseconds since the AS3 virtual machine started.
+
+
+<p>
+<hr><h3><a name="pdf-flash.new"><code>flash.new (className [, ...])</code></a></h3>
+
+<p>
+Constructs and returns a new AS3 object of type className, with the arguments given.
+For instance, the call
+<pre>
+     flash.new("flash.display.BitmapData", 40, 40)
+</pre><p>
+creates a new BitmapData object with a width and height of 40 pixels.
+This function is not safe for user code.
+
+<p>
+<hr><h3><a name="pdf-flash.registerConversion"><code>flash.registerConversion (className, f)</code></a></h3>
+
+<p>
+This function registers a conversion function for a given AS3 type.
+This function will be called to convert any object of the given type that is received.
+This function will receive an AS3 object, and can return anything.
+This function is not safe for user code.
+
+<p>
+<hr><h3><a name="pdf-flash.toarray"><code>flash.toarray (tab)</code></a></h3>
+
+<p>
+Converts the given table to an AS3 Array, and returns it.
+This function only converts numeric keys from 1 to <code>#tab</code>.
+This function does not convert functions, threads, or non-convertible userdata.
+The returned array uses 0-based indexing.
+Any tables within the given table are recursively converted to AS3 Arrays, with a maximum recursive depth of 32.
+
+<p>
+<hr><h3><a name="pdf-flash.toobject"><code>flash.toobject (tab)</code></a></h3>
+
+<p>
+Converts the given table to an AS3 Object, and returns it.
+This function only converts string keys.
+This function does not convert functions, threads, or non-convertible userdata.
+Any tables within the given table are recursively converted to AS3 Objects, with a maximum recursive depth of 32.
+
+<p>
+<hr><h3><a name="pdf-flash.trace"><code>flash.trace (str)</code></a></h3>
+
+<p>
+This function is a wrapper for AS3 <code>trace(str);</code>.
+
+<p>
+<hr><h3><a name="pdf-flash.type"><code>flash.type (obj)</code></a></h3>
+
+<p>
+This function is a wrapper for AS3 <code>getQualifiedClassName(obj);</code>.
+An example of the output is <code>"flash.display::BitmapData"</code>.
 
 
 <h1>7 &ndash; <a name="7">Lua Standalone</a></h1>

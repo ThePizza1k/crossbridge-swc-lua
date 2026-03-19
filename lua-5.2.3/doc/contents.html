@@ -119,6 +119,9 @@ Freely available under the terms of the
 <LI><A HREF="manual.html#6.8">6.8 &ndash; Input and Output Facilities</A>
 <LI><A HREF="manual.html#6.9">6.9 &ndash; Operating System Facilities</A>
 <LI><A HREF="manual.html#6.10">6.10 &ndash; The Debug Library</A>
+<LI><A HREF="manual.html#6.11">6.11 &ndash; The Random Library</A>
+<LI><A HREF="manual.html#6.12">6.12 &ndash; The Buffer Library</A>
+<LI><A HREF="manual.html#6.13">6.13 &ndash; The Flash Library</A>
 </UL>
 <P>
 <LI><A HREF="manual.html#7">7 &ndash; Lua Standalone</A>
@@ -182,6 +185,34 @@ Freely available under the terms of the
 <A HREF="manual.html#pdf-bit32.rshift">bit32.rshift</A><BR>
 
 <P>
+<A HREF="manual.html#pdf-buffer.copy">buffer.copy</A><BR>
+<A HREF="manual.html#pdf-buffer.fill">buffer.fill</A><BR>
+<A HREF="manual.html#pdf-buffer.fromstring">buffer.fromstring</A><BR>
+<A HREF="manual.html#pdf-buffer.len">buffer.len</A><BR>
+<A HREF="manual.html#pdf-buffer.new">buffer.new</A><BR>
+<A HREF="manual.html#pdf-buffer.readbits">buffer.readbits</A><BR>
+<A HREF="manual.html#pdf-buffer.readf32">buffer.readf32</A><BR>
+<A HREF="manual.html#pdf-buffer.readf64">buffer.readf64</A><BR>
+<A HREF="manual.html#pdf-buffer.readi8">buffer.readi8</A><BR>
+<A HREF="manual.html#pdf-buffer.readi16">buffer.readi16</A><BR>
+<A HREF="manual.html#pdf-buffer.readi32">buffer.readi32</A><BR>
+<A HREF="manual.html#pdf-buffer.readstring">buffer.readstring</A><BR>
+<A HREF="manual.html#pdf-buffer.readu8">buffer.readu8</A><BR>
+<A HREF="manual.html#pdf-buffer.readu16">buffer.readu16</A><BR>
+<A HREF="manual.html#pdf-buffer.readu32">buffer.readu32</A><BR>
+<A HREF="manual.html#pdf-buffer.writebits">buffer.writebits</A><BR>
+<A HREF="manual.html#pdf-buffer.writef32">buffer.writef32</A><BR>
+<A HREF="manual.html#pdf-buffer.writef64">buffer.writef64</A><BR>
+<A HREF="manual.html#pdf-buffer.writei8">buffer.writei8</A><BR>
+<A HREF="manual.html#pdf-buffer.writei16">buffer.writei16</A><BR>
+<A HREF="manual.html#pdf-buffer.writei32">buffer.writei32</A><BR>
+<A HREF="manual.html#pdf-buffer.writestring">buffer.writestring</A><BR>
+<A HREF="manual.html#pdf-buffer.writeu8">buffer.writeu8</A><BR>
+<A HREF="manual.html#pdf-buffer.writeu16">buffer.writeu16</A><BR>
+<A HREF="manual.html#pdf-buffer.writeu32">buffer.writeu32</A><BR>
+
+
+<P>
 <A HREF="manual.html#pdf-coroutine.create">coroutine.create</A><BR>
 <A HREF="manual.html#pdf-coroutine.resume">coroutine.resume</A><BR>
 <A HREF="manual.html#pdf-coroutine.running">coroutine.running</A><BR>
@@ -217,6 +248,16 @@ Freely available under the terms of the
 <A HREF="manual.html#pdf-file:write">file:write</A><BR>
 
 <P>
+<A HREF="manual.html#pdf-flash.getclass">flash.getclass</A><BR>
+<A HREF="manual.html#pdf-flash.gettimer">flash.gettimer</A><BR>
+<A HREF="manual.html#pdf-flash.new">flash.new</A><BR>
+<A HREF="manual.html#pdf-flash.registerConversion">flash.registerConversion</A><BR>
+<A HREF="manual.html#pdf-flash.toarray">flash.toarray</A><BR>
+<A HREF="manual.html#pdf-flash.toobject">flash.toobject</A><BR>
+<A HREF="manual.html#pdf-flash.trace">flash.trace</A><BR>
+<A HREF="manual.html#pdf-flash.type">flash.type</A><BR>
+
+<P>
 <A HREF="manual.html#pdf-io.close">io.close</A><BR>
 <A HREF="manual.html#pdf-io.flush">io.flush</A><BR>
 <A HREF="manual.html#pdf-io.input">io.input</A><BR>
@@ -242,6 +283,7 @@ Freely available under the terms of the
 <A HREF="manual.html#pdf-math.atan">math.atan</A><BR>
 <A HREF="manual.html#pdf-math.atan2">math.atan2</A><BR>
 <A HREF="manual.html#pdf-math.ceil">math.ceil</A><BR>
+<A HREF="manual.html#pdf-math.clamp">math.clamp</A><BR>
 <A HREF="manual.html#pdf-math.cos">math.cos</A><BR>
 <A HREF="manual.html#pdf-math.cosh">math.cosh</A><BR>
 <A HREF="manual.html#pdf-math.deg">math.deg</A><BR>
@@ -260,6 +302,8 @@ Freely available under the terms of the
 <A HREF="manual.html#pdf-math.rad">math.rad</A><BR>
 <A HREF="manual.html#pdf-math.random">math.random</A><BR>
 <A HREF="manual.html#pdf-math.randomseed">math.randomseed</A><BR>
+<A HREF="manual.html#pdf-math.round">math.round</A><BR>
+<A HREF="manual.html#pdf-math.sign">math.sign</A><BR>
 <A HREF="manual.html#pdf-math.sin">math.sin</A><BR>
 <A HREF="manual.html#pdf-math.sinh">math.sinh</A><BR>
 <A HREF="manual.html#pdf-math.sqrt">math.sqrt</A><BR>
@@ -290,6 +334,14 @@ Freely available under the terms of the
 <A HREF="manual.html#pdf-package.searchpath">package.searchpath</A><BR>
 
 <P>
+<A HREF="manual.html#pdf-random.clone">random.clone</A><BR>
+<A HREF="manual.html#pdf-random.new">random.new</A><BR>
+<A HREF="manual.html#pdf-random.swap">random.swap</A><BR>
+<A HREF="manual.html#pdf-rng.getseed">rng.getseed</A><BR>
+<A HREF="manual.html#pdf-rng.random">rng.random</A><BR>
+<A HREF="manual.html#pdf-rng.randomseed">rng.randomseed</A><BR>
+
+<P>
 <A HREF="manual.html#pdf-string.byte">string.byte</A><BR>
 <A HREF="manual.html#pdf-string.char">string.char</A><BR>
 <A HREF="manual.html#pdf-string.dump">string.dump</A><BR>
@@ -307,6 +359,8 @@ Freely available under the terms of the
 
 <P>
 <A HREF="manual.html#pdf-table.concat">table.concat</A><BR>
+<A HREF="manual.html#pdf-table.create">table.create</A><BR>
+<A HREF="manual.html#pdf-table.find">table.find</A><BR>
 <A HREF="manual.html#pdf-table.insert">table.insert</A><BR>
 <A HREF="manual.html#pdf-table.pack">table.pack</A><BR>
 <A HREF="manual.html#pdf-table.remove">table.remove</A><BR>
