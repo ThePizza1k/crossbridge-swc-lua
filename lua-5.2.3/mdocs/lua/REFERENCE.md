@@ -8,7 +8,7 @@ Some base Lua libraries were extended.
 
 The flash library provides some tools for interop with AS3. Be aware that some of these functions are not safe, and should not be allowed for user code.
 All metamethods on flash objects should be safe, so long as you limit what you provide.
-(You may want to restrict access to Class objects via registerConversion, as you can access them via obj.constructor and cause problems)
+(You may want to restrict access to Class objects via registerConversion, as you can access them via obj.constructor)
 
 <details>
 
@@ -63,13 +63,10 @@ All metamethods on flash objects should be safe, so long as you limit what you p
   - The `__index` metamethod indexes the AS3 object, and converts the returned value to a Lua value if possible.
     - Functions will be converted to closures, which follow the same semantics given below for the `__call` metamethod when called.
     - If a conversion function is registered for the object's type, then the corresponding conversion function will be called, and the value returned by that will be returned instead.
-    - This does not silence errors. Don't make your getters throw errors. That is psychotic behavior that I will not stand for.
   - The `__newindex` metamethod attempts to set the given property. Any error that occurs is silenced.
   - The `__call` metamethod will call the AS3 object with the given arguments, if it is a `Function`, and return the result. Any error that occurs is thrown as a Lua error.
     - Follows the same semantics for returns as `__index`.
   - The `__pairs` metamethod allows use of `pairs` to loop over all dynamic properties of an Object, the same way one would with a Lua table.
-  - The `__ipairs` metamethod allows use of `ipairs` to loop over the sequential elements of an Array or Vector, starting from 0 and ending at obj.length-1.
-  - The `__len` metamethod allows the use of `#obj` as an equivalent to `obj.length`, when obj is an Array or Vector. It otherwise returns 0.
    
 </details>
 
