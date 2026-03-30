@@ -10440,7 +10440,7 @@ There is also a LuaEnums class provided, to easily reference various constants. 
 
 <b>WARNING: Having multiple active full LuaStates is not currently supported, as this may cause issues with how references to AS3 objects are stored.</b> 
 
-<h2>7.1 &ndash; <a name="7.1">The LuaState class</a></h2>
+<h2>7.1 &ndash; <a name="7.1">The LuaState Class</a></h2>
 This class allows for AS3 to create a new Lua state, interact with its global environment, and create new objects within it.<br>
 Within this section, <code>luaState</code> refers to an arbitrary LuaState object.
 
@@ -10504,6 +10504,21 @@ Sets the provided object as a global of the given name. The object will be conve
 <p>
 Creates a new table, filling it from a <code>Vector.&lt;Array&gt;</code> that describes each pair.<br>
 Each entry of the vector is an <code>Array</code> of size 2, where entry 0 is the key and entry 1 is the value.
+
+
+<h2>7.2 &ndash; <a name="7.2">The LuaReference Class</a></h2>
+This class allows for AS3 to interact with a particular Lua object. In general, a LuaReference object refers to any Lua object that cannot be converted to AS3.<br>
+This includes: tables, functions, threads/coroutines, and non-flash userdata without an AS3 conversion metamethod.<br><br>
+
+Unfortunately, AS3 lacks finalizers, so these references need to be managed manually. This is done via reference counting.<br>
+Some reference counting is automatic: when Lua calls an AS3 function or setter, any LuaReference it provides starts at a count of 1, and the count is automatically decremented after the function or setter returns.<br>
+Any LuaReference returned to Lua has its reference count decremented by 1.<br>
+Generally, you should increment the reference count by 1 whenever storing it somewhere.<br>
+If you remove the LuaReference from that storage, you should decrement it by 1 when you are done with it after doing that, unless you are returning it to Lua, which will do it for you.<br>
+Only decrement the reference when you are done using it, as it is possible for the reference to be freed when you do so.<br><br>
+
+Note that none of these functions do type checking for you.
+
 
 
 
