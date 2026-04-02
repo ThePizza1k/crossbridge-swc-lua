@@ -51,6 +51,8 @@ package {
 		private var inbox:TextField;
 
 		private var outbox:TextField;
+		
+		private var outArray:Array;
 
 		private var runtimelabel:TextField;
 
@@ -64,6 +66,7 @@ package {
 			runtimelabel = getTextField(5, 5, 790, 20);
 			inbox = getTextField(5, 30, 790, 275);
 			outbox = getTextField(5, 310, 790, 275);
+			outArray = new Array();
 
 			inbox.text = "-- paste your LUA code here ...";
 			inbox.type = TextFieldType.INPUT;
@@ -131,12 +134,14 @@ package {
 				arr = luastate.loadString(inbox.text);
 			} catch(e:Error) {
 				output(e.toString());
+				pushOutput();
 				luastate.close();
 				return;
 			}
 			
 			if (arr[0] != 0) {
 				output("Failed to parse script: " + arr[1]);
+				pushOutput();
 				luastate.close();
 				return;
 			}
@@ -163,13 +168,20 @@ package {
 			} catch(e:Error) {
 				output("Script threw AS3 error!\n" + e.toString() + "\n" + e.getStackTrace());
 			}
-
+			
+			pushOutput();
 			
 			luastate.close();
     }
+	
+		private function pushOutput() : void {
+			outbox.text += outArray.join("");
+			outArray.length = 0;
+		}
 
 		public function output(s:String):void {
-			outbox.text += s;
+			//outbox.text += s;
+			outArray.push(s);
 			//trace(s);
 		}
 
