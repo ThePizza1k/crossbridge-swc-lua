@@ -5,7 +5,7 @@ Modified version of crossbridge lua to better support running user code for Plat
 
 ## Building the library
 
-1. Install [Adobe AIR SDK](https://www.adobe.com/devnet/air/air-sdk-download.html)
+1. Install [Adobe AIR SDK](https://airsdk.harman.com/release_notes)
 2. Install [CrossBridge SDK](http://sourceforge.net/projects/crossbridge-community/files/)
 3. Set **AIR_HOME** environment variable pointing to the AIR SDK location
 4. Set **FLASCC_ROOT** environment variable pointing to the CrossBridge SDK location
