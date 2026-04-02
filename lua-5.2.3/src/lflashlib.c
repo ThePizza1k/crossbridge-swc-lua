@@ -37,6 +37,7 @@ package_as3(
 	"import flash.utils.Dictionary;\n"
 	"public var __lua_objrefs:Dictionary = new Dictionary();\n" // Keep track of object references from lua
 	"public var __lua_typerefs:Dictionary = new Dictionary();\n" // Keep track of types we may want to convert, via their constructors.
+	"public var __args:Array = new Array();\n" // Array used to store arguments for calling AS3 functions.
 	"public dynamic class LuaResultArray extends Array {\n"
 	"  public function LuaResultArray(... args){\n"
 	"    this.push.apply(this, args);\n"
@@ -415,15 +416,17 @@ static int flash_closure_apply (lua_State *L) {
 	FlashObj *funcobj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(2)); // yes this order is weird its whatever.
 	FlashObj *thisobj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(1)); // These are also guaranteed to be flash userdata.
 
-	inline_as3("var args:Array = [];\n");
-	inline_as3("var refs:Array = [];\n");
+	//inline_as3("var args:Array = [];\n");
+	int madeRefArray = 0;
+	inline_as3("var refs:Array = null;\n");
 
+	int index = 0;
 	int i = 1;
 	while(i <= top) {
 		switch(lua_type(L, i)) {
-			case LUA_TNIL: inline_as3("args.push(null);\n" : : ); break;
-			case LUA_TBOOLEAN: inline_as3("args.push(Boolean(%0));\n" : : "r"(lua_toboolean(L, i))); break;
-			case LUA_TNUMBER: inline_as3("args.push(%0);\n" : : "r"(lua_tonumber(L, i))); break;
+			case LUA_TNIL: inline_as3("__args[%0] = (null);\n" : : "r"(index) ); break;
+			case LUA_TBOOLEAN: inline_as3("__args[%1] = Boolean(%0);\n" : : "r"(lua_toboolean(L, i)), "r"(index)); break;
+			case LUA_TNUMBER: inline_as3("__args[%1] = %0;\n" : : "r"(lua_tonumber(L, i)), "r"(index)); break;
 			case LUA_TFUNCTION:
 			case LUA_TTABLE:
 			case LUA_TTHREAD:
@@ -431,7 +434,8 @@ static int flash_closure_apply (lua_State *L) {
 				lua_pushvalue(L,i);
 				int ref = luaL_ref(L,LUA_REGISTRYINDEX);
 				inline_as3("var luaRef:* = new LuaReference(%0, %1);\n" : : "r"(L), "r"(ref)); // Can't explicitly type luaRef or LLVM gets pissed.
-				inline_as3("args.push(luaRef); refs.push(luaRef);\n" : : );
+				if (madeRefArray == 0) {madeRefArray = 1; inline_as3("refs = [];");}
+				inline_as3("__args[%0] = luaRef; refs.push(luaRef);\n" : : "r"(index) );
 				break;
 			}
 			case LUA_TUSERDATA: 
@@ -440,20 +444,21 @@ static int flash_closure_apply (lua_State *L) {
 				int isFlash = 0;
 				inline_as3("%0 = (int) (%1 in __lua_objrefs);\n" : "=r"(isFlash) : "r"((int) ud));
 				if (isFlash) {
-					inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(getObjRef(L, i)));
+					inline_as3("__args[%1] = __lua_objrefs[%0];\n" : : "r"(getObjRef(L, i)), "r"(index));
 					break;
 				} else {
 					isFlash = luaL_getmetafield(L, i, "__as3");
 					if (isFlash) { // Conversion to AS3 exists.
 						lua_pushvalue(L, i);
 						lua_call(L, 1, 1);
-						inline_as3("args.push(__lua_objrefs[%0]);\n" : : "r"(lua_touserdata(L, -1)));
+						inline_as3("__args[%1] = __lua_objrefs[%0];\n" : : "r"(lua_touserdata(L, -1)), "r"(index));
 						lua_pop(L, 1);
 					} else { // we convert as a LuaReference
 						lua_pushvalue(L, i);
 						int uRef = luaL_ref(L,LUA_REGISTRYINDEX);
 						inline_as3("var udRef:* = new LuaReference(%0, %1);\n" : : "r"(L), "r"(uRef));
-						inline_as3("args.push(udRef); refs.push(udRef);\n" : : );
+						if (madeRefArray == 0) {madeRefArray = 1; inline_as3("refs = [];");}
+						inline_as3("__args[%0] = udRef; refs.push(udRef);\n" : : "r"(index));
 					}
 				}
 				break;
@@ -464,7 +469,7 @@ static int flash_closure_apply (lua_State *L) {
 				const char *s = lua_tolstring(L, i, &l);
 				AS3_DeclareVar(strvar, String);
 				AS3_CopyCStringToVar(strvar, s, l);
-				inline_nonreentrant_as3("args.push(strvar);\n");
+				inline_nonreentrant_as3("__args[%0] = strvar;\n" : : "r"(index));
 				break;
 			}
 			default:
@@ -472,6 +477,7 @@ static int flash_closure_apply (lua_State *L) {
 				return 0;
 		}
 		i++;
+		index++;
 	}
 	// Flush all args off the stack
 	lua_pop(L, top);
@@ -481,29 +487,31 @@ static int flash_closure_apply (lua_State *L) {
 
 	inline_as3(
 		"try{\n"
-		"  switch(args.length) { \n"
+		"  switch(%3) { \n"
 		"    case 0: result = __lua_objrefs[%1](); break;\n"
-		"    case 1: result = __lua_objrefs[%1](args[0]); break;\n"
-		"    case 2: result = __lua_objrefs[%1](args[0], args[1]); break;\n"
-		"    case 3: result = __lua_objrefs[%1](args[0], args[1], args[2]); break;\n"
-		"    case 4: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3]); break;\n"
-		"    case 5: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4]); break;\n" 
-		"    case 6: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5]); break;\n"
-		"    case 7: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6]); break;\n"
-		"    case 8: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]); break;\n"
-		"    case 9: result = __lua_objrefs[%1](args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]); break;\n"
-		"    default: result = __lua_objrefs[%1].apply(__lua_objrefs[%2],args); break;\n"
+		"    case 1: result = __lua_objrefs[%1](__args[0]); break;\n"
+		"    case 2: result = __lua_objrefs[%1](__args[0], __args[1]); break;\n"
+		"    case 3: result = __lua_objrefs[%1](__args[0], __args[1], __args[2]); break;\n"
+		"    case 4: result = __lua_objrefs[%1](__args[0], __args[1], __args[2], __args[3]); break;\n"
+		"    case 5: result = __lua_objrefs[%1](__args[0], __args[1], __args[2], __args[3], __args[4]); break;\n" 
+		"    case 6: result = __lua_objrefs[%1](__args[0], __args[1], __args[2], __args[3], __args[4], __args[5]); break;\n"
+		"    case 7: result = __lua_objrefs[%1](__args[0], __args[1], __args[2], __args[3], __args[4], __args[5], __args[6]); break;\n"
+		"    case 8: result = __lua_objrefs[%1](__args[0], __args[1], __args[2], __args[3], __args[4], __args[5], __args[6], __args[7]); break;\n"
+		"    case 9: result = __lua_objrefs[%1](__args[0], __args[1], __args[2], __args[3], __args[4], __args[5], __args[6], __args[7], __args[8]); break;\n"
+		"    default: result = __args.length = %3; __lua_objrefs[%1].apply(__lua_objrefs[%2],__args); break;\n"
 		"  };\n"
 		"} catch(e : Error) {\n"
 		"  %0 = 1;\n"
 		"  result = e.message;\n"
 		"} finally {\n"
-		"  for (var i:int = 0; i < refs.length; i++){\n" // Decrement reference count for any LuaReferences
-		"    refs[i].decRef();"
+		"  if (refs != null) {\n"
+		"    for (var i:int = 0; i < refs.length; i++){\n" // Decrement reference count for any LuaReferences
+		"      refs[i].decRef();"
+		"    }\n"
 		"  }\n"
 		"}\n"
 		: "=r" (err)
-		: "r"(funcobj), "r"(thisobj)
+		: "r"(funcobj), "r"(thisobj), "r"(top)
 	);
 
 	if (err == 1){ // There was an error!
