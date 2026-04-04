@@ -16,7 +16,7 @@ Modified version of crossbridge lua to better support running user code for Plat
 
 Check the Example(s) located at: src/main/actionscript
 
-You can also see the documentation at [https://thepizza1k.github.io/crossbridge-swc-lua/contents.html](https://thepizza1k.github.io/crossbridge-swc-lua/contents.html)
+You can also see the documentation at [https://platformracing3.github.io/crossbridge-swc-lua/contents.html](https://platformracing3.github.io/crossbridge-swc-lua/contents.html)
 
 ## Running the UnitTests
 
