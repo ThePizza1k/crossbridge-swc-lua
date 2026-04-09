@@ -709,7 +709,17 @@ void luaV_execute (lua_State *L) {
       vmcase(OP_CALL,
         int b = GETARG_B(i);
         int nresults = GETARG_C(i) - 1;
+				int n;
+				lua_FastCFunction fcf;
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
+				if (ttype(ra) == LUA_TFCF) {
+					fcf = fcfvalue(ra);
+					n = (*fcf)(L, ra, nresults, ra + 1, cast_int(L->top - ra) - 1);
+					if (n < 0) {goto FCFallback;}
+					L->top = ra + n; /* adjust stack */
+					break; // break early
+				}
+				FCFallback:
         if (luaD_precall(L, ra, nresults)) {  /* C function? */
           if (nresults >= 0) L->top = ci->top;  /* adjust results */
           base = ci->u.l.base;
@@ -724,6 +734,16 @@ void luaV_execute (lua_State *L) {
         int b = GETARG_B(i);
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
         lua_assert(GETARG_C(i) - 1 == LUA_MULTRET);
+				int n;
+				lua_FastCFunction fcf;
+				if (ttype(ra) == LUA_TFCF) {
+					fcf = fcfvalue(ra);
+					n = (*fcf)(L, ra, LUA_MULTRET, ra + 1, cast_int(L->top - ra) - 1);
+					if (n < 0) {goto TFCFallback;}
+					L->top = ra + n; /* adjust stack */
+					break; // break early
+				}
+				TFCFallback:
         if (luaD_precall(L, ra, LUA_MULTRET))  /* C function? */
           base = ci->u.l.base;
         else {

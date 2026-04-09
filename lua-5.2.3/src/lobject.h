@@ -44,12 +44,14 @@
 ** 0 - Lua function
 ** 1 - light C function
 ** 2 - regular C function (closure)
+** 3 - fast C function
 */
 
 /* Variant tags for functions */
 #define LUA_TLCL	(LUA_TFUNCTION | (0 << 4))  /* Lua closure */
 #define LUA_TLCF	(LUA_TFUNCTION | (1 << 4))  /* light C function */
 #define LUA_TCCL	(LUA_TFUNCTION | (2 << 4))  /* C closure */
+#define LUA_TFCF    (LUA_TFUNCTION | (3 << 4))  /* fast C function */
 
 
 /* Variant tags for strings */
@@ -143,6 +145,7 @@ typedef struct lua_TValue TValue;
 #define ttisCclosure(o)		checktag((o), ctb(LUA_TCCL))
 #define ttisLclosure(o)		checktag((o), ctb(LUA_TLCL))
 #define ttislcf(o)		checktag((o), LUA_TLCF)
+#define ttisfcf(o)		checktag((o), LUA_TFCF)
 #define ttisuserdata(o)		checktag((o), ctb(LUA_TUSERDATA))
 #define ttisthread(o)		checktag((o), ctb(LUA_TTHREAD))
 #define ttisdeadkey(o)		checktag((o), LUA_TDEADKEY)
@@ -161,6 +164,8 @@ typedef struct lua_TValue TValue;
 #define clLvalue(o)	check_exp(ttisLclosure(o), &val_(o).gc->cl.l)
 #define clCvalue(o)	check_exp(ttisCclosure(o), &val_(o).gc->cl.c)
 #define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
+#define fcfvalue(o) check_exp(ttisfcf(o), val_(o).fc.funct)
+#define fcbvalue(o) check_exp(ttisfcf(o), val_(o).fc.fallback)
 #define hvalue(o)	check_exp(ttistable(o), &val_(o).gc->h)
 #define bvalue(o)	check_exp(ttisboolean(o), val_(o).b)
 #define thvalue(o)	check_exp(ttisthread(o), &val_(o).gc->th)
@@ -191,6 +196,9 @@ typedef struct lua_TValue TValue;
 
 #define setfvalue(obj,x) \
   { TValue *io=(obj); val_(io).f=(x); settt_(io, LUA_TLCF); }
+  
+#define setfastfvalue(obj,x) \
+  { TValue *io=(obj); val_(io).fc=(x); settt_(io, LUA_TFCF); }
 
 #define setpvalue(obj,x) \
   { TValue *io=(obj); val_(io).p=(x); settt_(io, LUA_TLIGHTUSERDATA); }
@@ -384,14 +392,20 @@ typedef struct lua_TValue TValue;
 ** =======================================================
 */
 
+typedef struct FastCFunction { // if the compiler is just going to complain i'm gonna give it no type info.
+	void* funct;
+	void* fallback;
+} FastCFunction;
 
 union Value {
   GCObject *gc;    /* collectable objects */
   void *p;         /* light userdata */
   int b;           /* booleans */
   lua_CFunction f; /* light C functions */
+  struct FastCFunction fc; /* fast C functions */
   numfield         /* numbers */
 };
+
 
 
 struct lua_TValue {
@@ -401,8 +415,7 @@ struct lua_TValue {
 
 typedef TValue *StkId;  /* index to stack elements */
 
-
-
+typedef int (*lua_FastCFunction) (lua_State *L, StkId res, int nresults, StkId* args, int nparams);
 
 /*
 ** Header for string value; string bytes follow the end of this structure

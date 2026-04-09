@@ -16,7 +16,7 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-#include "AS3/AS3.h"
+#include "lfastf.h"
 
 
 #undef PI
@@ -269,6 +269,25 @@ static int math_round (lua_State *L) {
 }
 
 
+/* fast call idea?
+
+lua_pushfastcfunction(L, f_math_sin, math_sin); // push( state, fast, fallback );
+*/
+
+static int f_math_abs(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
+		double a1 = nvalue(args);
+		if (a1 < 0){
+			setnvalue(res, -a1);
+		} else {
+			setnvalue(res, a1);
+		}
+    return 1;
+	}
+	return -1;
+}
+
+
 static const luaL_Reg mathlib[] = {
   {"abs",   math_abs},
   {"acos",  math_acos},
@@ -316,6 +335,8 @@ LUAMOD_API int luaopen_math (lua_State *L) {
   lua_setfield(L, -2, "pi");
   lua_pushnumber(L, HUGE_VAL);
   lua_setfield(L, -2, "huge");
+	lua_pushfastcfunction(L, f_math_abs, math_abs);
+	lua_setfield(L, -2, "fabs");
   return 1;
 }
 

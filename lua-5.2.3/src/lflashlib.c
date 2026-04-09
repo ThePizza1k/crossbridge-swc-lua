@@ -414,7 +414,11 @@ static int flash_closure_apply (lua_State *L) {
 	int top = lua_gettop(L);
 
 	FlashObj *funcobj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(2)); // yes this order is weird its whatever.
-	FlashObj *thisobj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(1)); // These are also guaranteed to be flash userdata.
+	FlashObj *thisobj;
+	
+	if (top > 9) {
+		thisobj = (FlashObj*) lua_touserdata(L, lua_upvalueindex(1)); // guaranteed to be flash userdata.
+	}
 
 	//inline_as3("var args:Array = [];\n");
 	int madeRefArray = 0;
