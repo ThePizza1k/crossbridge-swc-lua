@@ -1,6 +1,8 @@
 #define lbuflib_c
 #define LUA_LIB
 
+#include <math.h> // for nan stuff
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -221,7 +223,12 @@ static int buf_readf32(lua_State *L) {
 	valbytes[1] = bufbytes[offset + 2];
 	valbytes[2] = bufbytes[offset + 1];
 	valbytes[3] = bufbytes[offset];
-	lua_pushnumber(L, (double) value);
+	double db_value = (double) value;
+  if (isnan(db_value)) { // safety since user can generate signaling NAN.
+		lua_pushnumber(L, NAN);
+	} else {
+		lua_pushnumber(L, db_value);
+	}
 	return 1;
 }
 
@@ -256,7 +263,11 @@ static int buf_readf64(lua_State *L) {
 	valbytes[5] = bufbytes[offset + 2];
 	valbytes[6] = bufbytes[offset + 1];
 	valbytes[7] = bufbytes[offset];
-	lua_pushnumber(L, value);
+	if (isnan(value)) { // safety since user can generate signaling NAN.
+		lua_pushnumber(L, NAN);
+	} else {
+		lua_pushnumber(L, value);
+	}
 	return 1;
 }
 
@@ -521,6 +532,9 @@ static int buf_fromAS3(lua_State *L) { // called by lflashlib for conversion to 
 		: "r"((int) obj)
 	);
 	lua_pop(L, 1);
+	if (length > BUFFER_SIZE_CAP) {
+		luaL_error(L, "error converting from AS3 (buffer length cannot be greater than %d)", BUFFER_SIZE_CAP);
+	}
 	luaL_newuserbuffer(L, length);
 	struct buffer *buf = (struct buffer*) lua_touserdata(L,-1);
 	inline_as3(
