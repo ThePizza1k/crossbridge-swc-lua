@@ -1288,11 +1288,17 @@ static int flash_getclass (lua_State *L){
 
 static int flash_panic(lua_State *L) { // Replace Lua panic function with AS3 error.
 	size_t l;
-	const char *errMsg = luaL_checklstring(L, -1, &l);
+	const char *errMsg;
 	AS3_DeclareVar(luaErr, String);
-	AS3_CopyCStringToVar(luaErr, errMsg, l);
-	lua_settop(L, 0); // set top to 0.
-	inline_as3("throw new Error(\"Lua Panic: \" + luaErr);");
+	if (lua_type(L, -1) == LUA_TSTRING) {
+		luaL_checklstring(L, -1, &l);
+		AS3_CopyCStringToVar(luaErr, errMsg, l);
+		lua_settop(L, 0); // set top to 0.
+		inline_as3("throw new Error(\"Lua Panic: \" + luaErr);");
+	} else { // lua wont make a string if its out of memory.
+		lua_settop(L, 0);
+		inline_as3("throw new Error(\"Lua Panic: Out Of Memory\");");
+	}
 	return 0;
 }
 
