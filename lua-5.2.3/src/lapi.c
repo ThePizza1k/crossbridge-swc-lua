@@ -573,9 +573,8 @@ LUA_API void lua_pushcclosure (lua_State *L, lua_CFunction fn, int n) {
   lua_unlock(L);
 }
 
-LUA_API void lua_pushfastcfunction(lua_State *L, lua_FastCFunction fast, lua_CFunction fallback) {
+LUA_API void lua_pushfastcfunction(lua_State *L, FastCFunction *fn) {
 	lua_lock(L);
-	FastCFunction fn = {fast, fallback};
 	setfastfvalue(L->top, fn);
 	api_incr_top(L);
 	lua_unlock(L);

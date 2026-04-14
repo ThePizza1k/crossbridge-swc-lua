@@ -164,8 +164,8 @@ typedef struct lua_TValue TValue;
 #define clLvalue(o)	check_exp(ttisLclosure(o), &val_(o).gc->cl.l)
 #define clCvalue(o)	check_exp(ttisCclosure(o), &val_(o).gc->cl.c)
 #define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
-#define fcfvalue(o) check_exp(ttisfcf(o), val_(o).fc.funct)
-#define fcbvalue(o) check_exp(ttisfcf(o), val_(o).fc.fallback)
+#define fcfvalue(o) check_exp(ttisfcf(o), val_(o).fc->funct)
+#define fcbvalue(o) check_exp(ttisfcf(o), val_(o).fc->fallback)
 #define hvalue(o)	check_exp(ttistable(o), &val_(o).gc->h)
 #define bvalue(o)	check_exp(ttisboolean(o), val_(o).b)
 #define thvalue(o)	check_exp(ttisthread(o), &val_(o).gc->th)
@@ -402,7 +402,7 @@ union Value {
   void *p;         /* light userdata */
   int b;           /* booleans */
   lua_CFunction f; /* light C functions */
-  struct FastCFunction fc; /* fast C functions */
+  FastCFunction *fc; /* fast C functions */
   numfield         /* numbers */
 };
 

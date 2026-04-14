@@ -298,7 +298,6 @@ static StkId tryfuncTM (lua_State *L, StkId func) {
 */
 int luaD_precall (lua_State *L, StkId func, int nresults) {
   lua_CFunction f;
-	lua_FastCFunction fcf;
   CallInfo *ci;
   int n;  /* number of arguments (Lua) or returns (C) */
   ptrdiff_t funcr = savestack(L, func);

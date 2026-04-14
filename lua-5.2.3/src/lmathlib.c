@@ -325,6 +325,8 @@ static const luaL_Reg mathlib[] = {
   {NULL, NULL}
 };
 
+static FastCFunction test = {f_math_abs, math_abs};
+
 
 /*
 ** Open math library
@@ -335,7 +337,7 @@ LUAMOD_API int luaopen_math (lua_State *L) {
   lua_setfield(L, -2, "pi");
   lua_pushnumber(L, HUGE_VAL);
   lua_setfield(L, -2, "huge");
-	lua_pushfastcfunction(L, f_math_abs, math_abs);
+	lua_pushfastcfunction(L, &test);
 	lua_setfield(L, -2, "fabs");
   return 1;
 }
