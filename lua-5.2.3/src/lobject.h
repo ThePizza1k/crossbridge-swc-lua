@@ -392,10 +392,7 @@ typedef struct lua_TValue TValue;
 ** =======================================================
 */
 
-typedef struct FastCFunction { // if the compiler is just going to complain i'm gonna give it no type info.
-	void* funct;
-	void* fallback;
-} FastCFunction;
+typedef struct FastCFunction FastCFunction;
 
 union Value {
   GCObject *gc;    /* collectable objects */
@@ -416,6 +413,11 @@ struct lua_TValue {
 typedef TValue *StkId;  /* index to stack elements */
 
 typedef int (*lua_FastCFunction) (lua_State *L, StkId res, int nresults, StkId* args, int nparams);
+
+struct FastCFunction {
+	lua_FastCFunction funct;
+	lua_CFunction fallback;
+};
 
 /*
 ** Header for string value; string bytes follow the end of this structure
