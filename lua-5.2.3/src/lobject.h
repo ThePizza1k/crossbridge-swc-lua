@@ -412,7 +412,7 @@ struct lua_TValue {
 
 typedef TValue *StkId;  /* index to stack elements */
 
-typedef int (*lua_FastCFunction) (lua_State *L, StkId res, int nresults, StkId* args, int nparams);
+typedef int (*lua_FastCFunction) (lua_State *L, StkId res, int nresults, StkId args, int nparams);
 
 struct FastCFunction {
 	lua_FastCFunction funct;

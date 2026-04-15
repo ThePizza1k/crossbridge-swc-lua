@@ -447,6 +447,7 @@ LUA_API const void *lua_topointer (lua_State *L, int idx) {
     case LUA_TLCL: return clLvalue(o);
     case LUA_TCCL: return clCvalue(o);
     case LUA_TLCF: return cast(void *, cast(size_t, fvalue(o)));
+		case LUA_TFCF: return (void*) val_(o).fc;
     case LUA_TTHREAD: return thvalue(o);
     case LUA_TUSERDATA:
     case LUA_TLIGHTUSERDATA:

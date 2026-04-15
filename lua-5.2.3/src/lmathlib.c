@@ -23,6 +23,8 @@
 #define PI	((lua_Number)(3.1415926535897932384626433832795))
 #define RADIANS_PER_DEGREE	((lua_Number)(PI/180.0))
 
+#define unused __attribute__((unused)) 
+
 
 
 static int math_abs (lua_State *L) {
@@ -30,7 +32,7 @@ static int math_abs (lua_State *L) {
   return 1;
 }
 
-static int f_math_abs(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_abs(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		if (a1 < 0){
@@ -48,7 +50,7 @@ static int math_sin (lua_State *L) {
   return 1;
 }
 
-static int f_math_sin(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_sin(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, sin(a1));
@@ -62,7 +64,7 @@ static int math_sinh (lua_State *L) {
   return 1;
 }
 
-static int f_math_sinh(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_sinh(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, sinh(a1));
@@ -76,7 +78,7 @@ static int math_cos (lua_State *L) {
   return 1;
 }
 
-static int f_math_cos(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_cos(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, cos(a1));
@@ -90,7 +92,7 @@ static int math_cosh (lua_State *L) {
   return 1;
 }
 
-static int f_math_cosh(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_cosh(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, cosh(a1));
@@ -104,7 +106,7 @@ static int math_tan (lua_State *L) {
   return 1;
 }
 
-static int f_math_tan(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_tan(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, tan(a1));
@@ -118,7 +120,7 @@ static int math_tanh (lua_State *L) {
   return 1;
 }
 
-static int f_math_tanh(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_tanh(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, tanh(a1));
@@ -132,7 +134,7 @@ static int math_asin (lua_State *L) {
   return 1;
 }
 
-static int f_math_asin(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_asin(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, asin(a1));
@@ -146,7 +148,7 @@ static int math_acos (lua_State *L) {
   return 1;
 }
 
-static int f_math_acos(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_acos(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, acos(a1));
@@ -160,7 +162,7 @@ static int math_atan (lua_State *L) {
   return 1;
 }
 
-static int f_math_atan(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_atan(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, atan(a1));
@@ -175,7 +177,7 @@ static int math_atan2 (lua_State *L) {
   return 1;
 }
 
-static int f_math_atan2(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_atan2(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 2 && nresults <= 1 && ttisnumber(args) && ttisnumber(args + 1)){
 		double a1 = nvalue(args);
 		double a2 = nvalue(args + 1); // how does StkId work? who knows.
@@ -190,7 +192,7 @@ static int math_ceil (lua_State *L) {
   return 1;
 }
 
-static int f_math_ceil(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_ceil(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, ceil(a1));
@@ -204,7 +206,7 @@ static int math_floor (lua_State *L) {
   return 1;
 }
 
-static int f_math_floor(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_floor(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, floor(a1));
@@ -219,7 +221,7 @@ static int math_fmod (lua_State *L) {
   return 1;
 }
 
-static int f_math_fmod(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_fmod(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 2 && nresults <= 1 && ttisnumber(args) && ttisnumber(args + 1)){
 		double a1 = nvalue(args);
 		double a2 = nvalue(args + 1);
@@ -237,7 +239,7 @@ static int math_modf (lua_State *L) {
   return 2;
 }
 
-static int f_math_modf(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_modf(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 2 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		double ip;
@@ -253,7 +255,7 @@ static int math_sqrt (lua_State *L) {
   return 1;
 }
 
-static int f_math_sqrt(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_sqrt(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, sqrt(a1));
@@ -269,7 +271,7 @@ static int math_pow (lua_State *L) {
   return 1;
 }
 
-static int f_math_pow(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_pow(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 2 && nresults <= 1 && ttisnumber(args) && ttisnumber(args + 1)){
 		double a1 = nvalue(args);
 		double a2 = nvalue(args + 1);
@@ -293,7 +295,7 @@ static int math_log (lua_State *L) {
   return 1;
 }
 
-static int f_math_log(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_log(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nresults <= 1 && ttisnumber(args)) { // first check
 		double a1;
 		switch(nparams){
@@ -327,7 +329,7 @@ static int math_log10 (lua_State *L) {
   return 1;
 }
 
-static int f_math_log10(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_log10(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, log10(a1));
@@ -342,7 +344,7 @@ static int math_exp (lua_State *L) {
   return 1;
 }
 
-static int f_math_exp(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_exp(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, exp(a1));
@@ -356,7 +358,7 @@ static int math_deg (lua_State *L) {
   return 1;
 }
 
-static int f_math_deg(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_deg(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, a1 / RADIANS_PER_DEGREE);
@@ -370,7 +372,7 @@ static int math_rad (lua_State *L) {
   return 1;
 }
 
-static int f_math_rad(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_rad(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		setnvalue(res, a1 * RADIANS_PER_DEGREE);
@@ -386,7 +388,7 @@ static int math_frexp (lua_State *L) {
   return 2;
 }
 
-static int f_math_frexp(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_frexp(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 2 && ttisnumber(args)){
 		double a1 = nvalue(args);
 		int e;
@@ -404,7 +406,7 @@ static int math_ldexp (lua_State *L) {
   return 1;
 }
 
-static int f_math_ldexp(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_ldexp(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 2 && nresults <= 1 && ttisnumber(args) && ttisnumber(args + 1)){
 		double a1 = nvalue(args);
 		int ep = (int) nvalue(args + 1);
@@ -427,7 +429,7 @@ static int math_min (lua_State *L) {
   return 1;
 }
 
-static int f_math_min(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_min(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 2 && nresults <= 1 && ttisnumber(args) && ttisnumber(args + 1)){
 		double a1 = nvalue(args);
 		double a2 = nvalue(args + 1);
@@ -465,7 +467,7 @@ static int math_max (lua_State *L) {
   return 1;
 }
 
-static int f_math_max(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_max(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 2 && nresults <= 1 && ttisnumber(args) && ttisnumber(args + 1)){
 		double a1 = nvalue(args);
 		double a2 = nvalue(args + 1);
@@ -539,7 +541,7 @@ static int math_clamp (lua_State *L) {
   return 1;  
 }
 
-static int f_math_clamp(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_clamp(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 3 && nresults <= 1 && ttisnumber(args) && ttisnumber(args + 1) && ttisnumber(args + 2)){
 		double val = nvalue(args);
 		double min = nvalue(args + 1);
@@ -573,7 +575,7 @@ static int math_sign (lua_State *L) {
   return 1;
 }
 
-static int f_math_sign(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_sign(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double val = nvalue(args);
 		if (val < 0.0) {
@@ -599,7 +601,7 @@ static int math_round (lua_State *L) {
   return 1;
 }
 
-static int f_math_round(lua_State *L, StkId res, int nresults, StkId args, int nparams) {
+static int f_math_round(unused lua_State *L, StkId res, int nresults, StkId args, int nparams) {
 	if (nparams >= 1 && nresults <= 1 && ttisnumber(args)){
 		double val = nvalue(args);
 		if (val < 0.0) {
@@ -611,6 +613,8 @@ static int f_math_round(lua_State *L, StkId res, int nresults, StkId args, int n
 	}
 	return -1;
 }
+
+// real
 
 
 

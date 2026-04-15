@@ -175,7 +175,7 @@ linit.o: linit.c lua.h luaconf.h lualib.h lauxlib.h
 liolib.o: liolib.c lua.h luaconf.h lauxlib.h lualib.h
 llex.o: llex.c lua.h luaconf.h lctype.h llimits.h ldo.h lobject.h \
  lstate.h ltm.h lzio.h lmem.h llex.h lparser.h lstring.h lgc.h ltable.h
-lmathlib.o: lmathlib.c lua.h luaconf.h lauxlib.h lualib.h
+lmathlib.o: lmathlib.c lua.h luaconf.h lauxlib.h lualib.h lfastf.h lobject.h
 lmem.o: lmem.c lua.h luaconf.h ldebug.h lstate.h lobject.h llimits.h \
  ltm.h lzio.h lmem.h ldo.h lgc.h
 loadlib.o: loadlib.c lua.h luaconf.h lauxlib.h lualib.h
