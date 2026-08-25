@@ -268,6 +268,30 @@ static int math_round (lua_State *L) {
   return 1;
 }
 
+static int math_lerp (lua_State *L) {
+  lua_Number a = luaL_checknumber(L, 1);
+  lua_Number b = luaL_checknumber(L, 2);
+  lua_Number t = luaL_checknumber(L, 3);
+	
+  lua_Number r;
+  if (t == 1.0) {
+    r = b;
+  } else {
+    r = a + (b - a) * t;
+  }
+  lua_pushnumber(L,r);
+	
+  return 1;
+}
+
+static int math_isnan (lua_State *L) {
+  lua_Number val = luaL_checknumber(L, 1);
+	
+  lua_pushboolean(L, isnan(val));
+	
+  return 1;
+}
+
 
 static const luaL_Reg mathlib[] = {
   {"abs",   math_abs},
@@ -303,6 +327,8 @@ static const luaL_Reg mathlib[] = {
   {"clamp", math_clamp},
   {"sign", math_sign},
   {"round", math_round},
+  {"lerp", math_lerp},
+  {"isnan", math_isnan},
   {NULL, NULL}
 };
 
@@ -316,6 +342,8 @@ LUAMOD_API int luaopen_math (lua_State *L) {
   lua_setfield(L, -2, "pi");
   lua_pushnumber(L, HUGE_VAL);
   lua_setfield(L, -2, "huge");
+  lua_pushnumber(L, NAN);
+  lua_setfield(L, -2, "nan");
   return 1;
 }
 
