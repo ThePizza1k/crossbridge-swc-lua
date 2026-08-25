@@ -856,7 +856,13 @@ static int flash_safegetprop(lua_State *L) {
 	inline_as3("o1 = __lua_objrefs[%1]; %0 = int(propname in o1);\n" : "=r"(hasProperty) : "r"(obj));
 	if (hasProperty) {
 		AS3_DeclareVar(o2, Object);
-		inline_as3("o2 = o1[propname];\n" : : );
+		inline_as3(
+			"try{"
+			"	o2 = o1[propname];\n" 
+			"} catch (e:Error) {\n" // silence error.
+			"}"
+			: : 
+		);
 		int type = 0;
 
 		inline_as3(
