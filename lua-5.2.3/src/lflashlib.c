@@ -849,12 +849,13 @@ static int flash_safegetprop(lua_State *L) {
 	const char *s = luaL_checklstring(L, 2, &l);
 	AS3_DeclareVar(propname, String);
 	AS3_CopyCStringToVar(propname, s, l);
-	int hasProperty = 0;
+	
 	lua_pop(L, 1); // Pop string
 	AS3_DeclareVar(o1, Object);
 	//inline_as3("%0 = int(__lua_objrefs[%1].hasOwnProperty(propname));\n" : "=r"(hasProperty) : "r"(obj));
-	inline_as3("o1 = __lua_objrefs[%1]; %0 = int(propname in o1);\n" : "=r"(hasProperty) : "r"(obj));
-	if (hasProperty) {
+	inline_as3("o1 = __lua_objrefs[%0];\n" : : "r"(obj));
+	if (1) {
+		// I'm not reindenting all this shit and I want to replace it soon anyways. (surely that justifies it?)
 		AS3_DeclareVar(o2, Object);
 		inline_as3(
 			"try{"
