@@ -10,7 +10,8 @@ Modified version of crossbridge lua to better support running user code for Plat
 3. Set **AIR_HOME** environment variable pointing to the AIR SDK location
 4. Set **FLASCC_ROOT** environment variable pointing to the CrossBridge SDK location
 5. Add **FLASCC_ROOT/sdk/usr/bin** to the Path (OSX)
-6. Run **make** (OSX) or **build.bat** (Windows)
+6. Replace CModule.abc in **FLASCC_ROOT/sdk/usr/lib** with the one from the **crossbridge-patches** folder. (This fixes a memory safety issue in CModule)
+7. Run **make** (OSX) or **build.bat** (Windows)
 
 ## Using the library
 

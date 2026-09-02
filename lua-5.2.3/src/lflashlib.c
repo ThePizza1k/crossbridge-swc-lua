@@ -54,7 +54,12 @@ package_as3(
 	"    } else if (obj is Boolean){\n"
 	"      Lua.lua_pushboolean(L, int(obj));\n"
 	"    } else if (obj is String) {\n"
-	"      Lua.lua_pushstring(L, obj as String);\n"
+	"      try{\n"
+	"        Lua.lua_pushstring(L, obj as String);\n"
+	"      } catch(e:Error) {\n"
+	"        Lua.lua_pushstring(L, \"out of memory\");\n"
+	"        Lua.lua_error(L);\n"
+	"      }\n"
 	"    } else if (obj is Function) {\n"
 	"      var fnptr:int = Lua.push_flashref(L);\n"
 	"      __lua_objrefs[fnptr] = obj;\n"
@@ -158,7 +163,17 @@ static int FlashObj_tostring(lua_State *L)
 	FlashObj obj = (FlashObj) getObjRef(L, 1);
 	char *str = NULL;
 	lua_pop(L, 1);
-	inline_as3("%0 = CModule.mallocString(\"\"+__lua_objrefs[%1]);\n" : "=r"(str) : "r"(obj));
+	inline_as3(
+		"try{\n"
+		"  %0 = CModule.mallocString(\"\"+__lua_objrefs[%1]);\n" 
+		"} catch(e:Error) {"	
+		"}"
+		: "=r"(str) 
+		: "r"(obj)
+	);
+	if (str == NULL) {
+		return luaL_error(L,"out of memory");
+	}
 	lua_pushfstring(L, "%s", str);
 	free(str);
 	return 1;
@@ -516,7 +531,14 @@ static int flash_closure_apply (lua_State *L) {
 
 	if (err == 1){ // There was an error!
 		char *errmsg = NULL;
-		inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(errmsg) : );
+		inline_as3(
+			"try{\n"
+			"  %0 = CModule.mallocString(\"\"+ result as String);\n" 
+			"} catch(e:Error) {}\n"
+			: "=r"(errmsg)
+			: 
+		);
+		if (errmsg == NULL) {luaL_error(L, "out of memory");}
 		lua_pushstring(L, errmsg);
 		free(errmsg);
 		return luaL_error(L, "AS3 Error: %s", lua_tostring(L,-1));
@@ -548,7 +570,16 @@ static int flash_closure_apply (lua_State *L) {
 		case 3: // Is string
 			;
 			char *str = NULL;
-			inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(str) : );
+			inline_as3(
+				"try{\n"
+				"  %0 = CModule.mallocString(\"\"+ result as String);\n" 
+				"} catch(e:Error) {}\n"
+				: "=r"(str)
+				: 
+			);
+			if (str == NULL) {
+				luaL_error(L, "out of memory");
+			}
 			lua_pushfstring(L, "%s", str);
 			free(str);
 			break;
@@ -732,7 +763,16 @@ static int flash_metacall (lua_State *L) {
 
 	if (err == 1){ // There was an error!
 		char *errmsg = NULL;
-		inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(errmsg) : );
+		inline_as3(
+			"try{\n"
+			"  %0 = CModule.mallocString(\"\"+ result as String);\n" 
+			"} catch(e:Error) {}\n"
+			: "=r"(errmsg)
+			: 
+		);
+		if (errmsg == NULL) {
+			luaL_error(L, "out of memory");
+		}
 		lua_pushstring(L, errmsg);
 		free(errmsg);
 		return luaL_error(L, "AS3 Error: %s", lua_tostring(L,-1));
@@ -764,7 +804,16 @@ static int flash_metacall (lua_State *L) {
 		case 3: // Is string
 			;
 			char *str = NULL;
-			inline_as3("%0 = CModule.mallocString(\"\"+ result as String);\n" : "=r"(str) : );
+			inline_as3(
+				"try{\n"
+				"  %0 = CModule.mallocString(\"\"+ result as String);\n" 
+				"} catch(e:Error) {}\n"
+				: "=r"(str)
+				: 
+			);
+			if (str == NULL) {
+				luaL_error(L, "out of memory");
+			}
 			lua_pushfstring(L, "%s", str);
 			free(str);
 			break;
@@ -900,8 +949,17 @@ static int flash_safegetprop(lua_State *L) {
 			case 3: // Is string
 				lua_pop(L,1);
 				char *str = NULL;
-				inline_as3("%0 = CModule.mallocString(\"\"+ o2 as String);\n" : "=r"(str) : );
-				lua_pushfstring(L, "%s", str); // There's a reason to use pushfstring, right? Right?
+				inline_as3(
+					"try{\n"
+					"  %0 = CModule.mallocString(\"\"+ o2 as String);\n" 
+					"} catch(e:Error) {}\n"
+					: "=r"(str)
+					: 
+				);
+				if (str == NULL) {
+					luaL_error(L, "out of memory");
+				}
+				lua_pushstring(L, str); 
 				free(str);
 				break;
 			case 4: // Its a function
@@ -1215,7 +1273,16 @@ static int flash_type (lua_State *L) {
 	FlashObj obj = (FlashObj) getObjRef(L, 1);
 	char *str = NULL;
 	inline_as3("import flash.utils.getQualifiedClassName;\n");
-	inline_as3("%0 = CModule.mallocString(getQualifiedClassName(__lua_objrefs[%1]));\n" : "=r"(str) : "r"(obj));
+	inline_as3(
+		"try{\n"
+		"  %0 = CModule.mallocString(getQualifiedClassName(__lua_objrefs[%1]));\n"
+		"} catch(e:Error) {}\n"
+		: "=r"(str)
+		: "r"(obj)
+	);
+	if (str == NULL) {
+		luaL_error(L, "out of memory");
+	}
 	lua_pushfstring(L, "%s", str);
 	return 1;
 }
